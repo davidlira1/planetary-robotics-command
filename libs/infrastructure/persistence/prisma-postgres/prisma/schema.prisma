@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RobotType {
+  SCOUT
+  DRONE
+  HAULER
+  WORKER
+  MINER
+}
+
+enum RobotOperationalStatus {
+  OFFLINE
+  IDLE
+  ACTIVE
+  CHARGING
+  FAULTED
+}
+
+model Robot {
+  id                String                 @id
+  displayName       String
+  type              RobotType
+  model             String
+  operationalStatus RobotOperationalStatus
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  currentState      RobotCurrentState?
+  telemetry         RobotTelemetry[]
+}
+
+model RobotCurrentState {
+  robotId                 String   @id
+  positionX               Float
+  positionY               Float
+  positionZ               Float
+  batteryPercent          Float
+  temperatureCelsius      Float
+  signalStrengthDbm       Float
+  velocityMetersPerSecond Float
+  headingDegrees          Float
+  recordedAt              DateTime
+  receivedAt              DateTime
+  robot                   Robot    @relation(fields: [robotId], references: [id], onDelete: Cascade)
+}
+
+model RobotTelemetry {
+  id                      String   @id
+  robotId                 String
+  sourceTelemetryId       String
+  schemaVersion           Int
+  positionX               Float
+  positionY               Float
+  positionZ               Float
+  batteryPercent          Float
+  temperatureCelsius      Float
+  signalStrengthDbm       Float
+  velocityMetersPerSecond Float
+  headingDegrees          Float
+  recordedAt              DateTime
+  receivedAt              DateTime
+  robot                   Robot    @relation(fields: [robotId], references: [id], onDelete: Cascade)
+
+  @@unique([robotId, sourceTelemetryId])
+  @@index([robotId])
+  @@index([robotId, recordedAt])
+  @@index([recordedAt])
+}

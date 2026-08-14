@@ -1,0 +1,1069 @@
+openapi: 3.0.3
+info:
+  title: Planetary Robotics Command API
+  version: 1.0.0
+  description: Layer 1 HTTP contract. Generated from @prc/contracts Zod schemas —
+    do not hand-edit the YAML artifact.
+servers:
+  - url: http://localhost:3000
+components:
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum: &a3
+                - VALIDATION_ERROR
+                - ROBOT_NOT_FOUND
+                - IDEMPOTENCY_CONFLICT
+                - INVALID_CURSOR
+                - INVALID_TIME_RANGE
+                - INTERNAL_ERROR
+            message:
+              type: string
+            requestId:
+              type: string
+          required:
+            - code
+            - message
+            - requestId
+      required:
+        - error
+    IngestTelemetryRequest:
+      type: object
+      properties:
+        sourceTelemetryId:
+          type: string
+          minLength: 1
+        robotId:
+          type: string
+          minLength: 1
+        schemaVersion:
+          type: integer
+        recordedAt:
+          type: string
+          format: date-time
+        position:
+          type: object
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+            z:
+              type: number
+          required:
+            - x
+            - y
+            - z
+        batteryPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+        temperatureCelsius:
+          type: number
+        signalStrengthDbm:
+          type: number
+        velocityMetersPerSecond:
+          type: number
+          minimum: 0
+        headingDegrees:
+          type: number
+          minimum: 0
+          maximum: 360
+          exclusiveMaximum: true
+      required:
+        - sourceTelemetryId
+        - robotId
+        - schemaVersion
+        - recordedAt
+        - position
+        - batteryPercent
+        - temperatureCelsius
+        - signalStrengthDbm
+        - velocityMetersPerSecond
+        - headingDegrees
+    IngestTelemetryResponse:
+      type: object
+      properties:
+        telemetryId:
+          type: string
+        robotId:
+          type: string
+        recordedAt:
+          type: string
+          format: date-time
+        receivedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - ACCEPTED
+      required:
+        - telemetryId
+        - robotId
+        - recordedAt
+        - receivedAt
+        - status
+    ListRobotsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              displayName:
+                type: string
+              type:
+                type: string
+                enum: &a1
+                  - SCOUT
+                  - DRONE
+                  - HAULER
+                  - WORKER
+                  - MINER
+              model:
+                type: string
+              operationalStatus:
+                type: string
+                enum: &a2
+                  - OFFLINE
+                  - IDLE
+                  - ACTIVE
+                  - CHARGING
+                  - FAULTED
+              currentState:
+                type: object
+                nullable: true
+                properties:
+                  position:
+                    type: object
+                    properties:
+                      x:
+                        type: number
+                      y:
+                        type: number
+                      z:
+                        type: number
+                    required:
+                      - x
+                      - y
+                      - z
+                  batteryPercent:
+                    type: number
+                  temperatureCelsius:
+                    type: number
+                  signalStrengthDbm:
+                    type: number
+                  velocityMetersPerSecond:
+                    type: number
+                  headingDegrees:
+                    type: number
+                  recordedAt:
+                    type: string
+                    format: date-time
+                  receivedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - position
+                  - batteryPercent
+                  - temperatureCelsius
+                  - signalStrengthDbm
+                  - velocityMetersPerSecond
+                  - headingDegrees
+                  - recordedAt
+                  - receivedAt
+            required:
+              - id
+              - displayName
+              - type
+              - model
+              - operationalStatus
+              - currentState
+        page:
+          type: object
+          properties:
+            limit:
+              type: integer
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - limit
+            - nextCursor
+      required:
+        - items
+        - page
+    RobotDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        type:
+          type: string
+          enum: *a1
+        model:
+          type: string
+        operationalStatus:
+          type: string
+          enum: *a2
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        currentState:
+          type: object
+          nullable: true
+          properties:
+            position:
+              type: object
+              properties:
+                x:
+                  type: number
+                y:
+                  type: number
+                z:
+                  type: number
+              required:
+                - x
+                - y
+                - z
+            batteryPercent:
+              type: number
+            temperatureCelsius:
+              type: number
+            signalStrengthDbm:
+              type: number
+            velocityMetersPerSecond:
+              type: number
+            headingDegrees:
+              type: number
+            recordedAt:
+              type: string
+              format: date-time
+            receivedAt:
+              type: string
+              format: date-time
+          required:
+            - position
+            - batteryPercent
+            - temperatureCelsius
+            - signalStrengthDbm
+            - velocityMetersPerSecond
+            - headingDegrees
+            - recordedAt
+            - receivedAt
+      required:
+        - id
+        - displayName
+        - type
+        - model
+        - operationalStatus
+        - createdAt
+        - updatedAt
+        - currentState
+    ListTelemetryResponse:
+      type: object
+      properties:
+        robotId:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              telemetryId:
+                type: string
+              sourceTelemetryId:
+                type: string
+              schemaVersion:
+                type: integer
+              position:
+                type: object
+                properties:
+                  x:
+                    type: number
+                  y:
+                    type: number
+                  z:
+                    type: number
+                required:
+                  - x
+                  - y
+                  - z
+              batteryPercent:
+                type: number
+              temperatureCelsius:
+                type: number
+              signalStrengthDbm:
+                type: number
+              velocityMetersPerSecond:
+                type: number
+              headingDegrees:
+                type: number
+              recordedAt:
+                type: string
+                format: date-time
+              receivedAt:
+                type: string
+                format: date-time
+            required:
+              - telemetryId
+              - sourceTelemetryId
+              - schemaVersion
+              - position
+              - batteryPercent
+              - temperatureCelsius
+              - signalStrengthDbm
+              - velocityMetersPerSecond
+              - headingDegrees
+              - recordedAt
+              - receivedAt
+        page:
+          type: object
+          properties:
+            limit:
+              type: integer
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - limit
+            - nextCursor
+      required:
+        - robotId
+        - items
+        - page
+  parameters: {}
+paths:
+  /api/v1/telemetry:
+    post:
+      summary: Ingest robot telemetry
+      description: Durably accepts and persists telemetry (202). Same producer key
+        with same content is idempotent; conflicting content returns 409
+        IDEMPOTENCY_CONFLICT. Persistence completes before the response; future
+        async processing may follow.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sourceTelemetryId:
+                  type: string
+                  minLength: 1
+                robotId:
+                  type: string
+                  minLength: 1
+                schemaVersion:
+                  type: integer
+                recordedAt:
+                  type: string
+                  format: date-time
+                position:
+                  type: object
+                  properties:
+                    x:
+                      type: number
+                    y:
+                      type: number
+                    z:
+                      type: number
+                  required:
+                    - x
+                    - y
+                    - z
+                batteryPercent:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+                temperatureCelsius:
+                  type: number
+                signalStrengthDbm:
+                  type: number
+                velocityMetersPerSecond:
+                  type: number
+                  minimum: 0
+                headingDegrees:
+                  type: number
+                  minimum: 0
+                  maximum: 360
+                  exclusiveMaximum: true
+              required:
+                - sourceTelemetryId
+                - robotId
+                - schemaVersion
+                - recordedAt
+                - position
+                - batteryPercent
+                - temperatureCelsius
+                - signalStrengthDbm
+                - velocityMetersPerSecond
+                - headingDegrees
+      responses:
+        "202":
+          description: Telemetry accepted and persisted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  telemetryId:
+                    type: string
+                  robotId:
+                    type: string
+                  recordedAt:
+                    type: string
+                    format: date-time
+                  receivedAt:
+                    type: string
+                    format: date-time
+                  status:
+                    type: string
+                    enum:
+                      - ACCEPTED
+                required:
+                  - telemetryId
+                  - robotId
+                  - recordedAt
+                  - receivedAt
+                  - status
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+        "409":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+  /api/v1/robots:
+    get:
+      summary: List robots (fleet overview)
+      parameters:
+        - schema:
+            type: string
+            enum: *a1
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            enum: *a2
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: Fleet page ordered by id ascending
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        displayName:
+                          type: string
+                        type:
+                          type: string
+                          enum: *a1
+                        model:
+                          type: string
+                        operationalStatus:
+                          type: string
+                          enum: *a2
+                        currentState:
+                          type: object
+                          nullable: true
+                          properties:
+                            position:
+                              type: object
+                              properties:
+                                x:
+                                  type: number
+                                y:
+                                  type: number
+                                z:
+                                  type: number
+                              required:
+                                - x
+                                - y
+                                - z
+                            batteryPercent:
+                              type: number
+                            temperatureCelsius:
+                              type: number
+                            signalStrengthDbm:
+                              type: number
+                            velocityMetersPerSecond:
+                              type: number
+                            headingDegrees:
+                              type: number
+                            recordedAt:
+                              type: string
+                              format: date-time
+                            receivedAt:
+                              type: string
+                              format: date-time
+                          required:
+                            - position
+                            - batteryPercent
+                            - temperatureCelsius
+                            - signalStrengthDbm
+                            - velocityMetersPerSecond
+                            - headingDegrees
+                            - recordedAt
+                            - receivedAt
+                      required:
+                        - id
+                        - displayName
+                        - type
+                        - model
+                        - operationalStatus
+                        - currentState
+                  page:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                      nextCursor:
+                        type: string
+                        nullable: true
+                    required:
+                      - limit
+                      - nextCursor
+                required:
+                  - items
+                  - page
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+  /api/v1/robots/{robotId}:
+    get:
+      summary: Get robot detail
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: robotId
+          in: path
+      responses:
+        "200":
+          description: Robot detail with current state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  displayName:
+                    type: string
+                  type:
+                    type: string
+                    enum: *a1
+                  model:
+                    type: string
+                  operationalStatus:
+                    type: string
+                    enum: *a2
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  currentState:
+                    type: object
+                    nullable: true
+                    properties:
+                      position:
+                        type: object
+                        properties:
+                          x:
+                            type: number
+                          y:
+                            type: number
+                          z:
+                            type: number
+                        required:
+                          - x
+                          - y
+                          - z
+                      batteryPercent:
+                        type: number
+                      temperatureCelsius:
+                        type: number
+                      signalStrengthDbm:
+                        type: number
+                      velocityMetersPerSecond:
+                        type: number
+                      headingDegrees:
+                        type: number
+                      recordedAt:
+                        type: string
+                        format: date-time
+                      receivedAt:
+                        type: string
+                        format: date-time
+                    required:
+                      - position
+                      - batteryPercent
+                      - temperatureCelsius
+                      - signalStrengthDbm
+                      - velocityMetersPerSecond
+                      - headingDegrees
+                      - recordedAt
+                      - receivedAt
+                required:
+                  - id
+                  - displayName
+                  - type
+                  - model
+                  - operationalStatus
+                  - createdAt
+                  - updatedAt
+                  - currentState
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+  /api/v1/robots/{robotId}/telemetry:
+    get:
+      summary: List historical telemetry for a robot
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: robotId
+          in: path
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: to
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: desc
+          required: false
+          name: order
+          in: query
+      responses:
+        "200":
+          description: Cursor-paginated telemetry history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  robotId:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        telemetryId:
+                          type: string
+                        sourceTelemetryId:
+                          type: string
+                        schemaVersion:
+                          type: integer
+                        position:
+                          type: object
+                          properties:
+                            x:
+                              type: number
+                            y:
+                              type: number
+                            z:
+                              type: number
+                          required:
+                            - x
+                            - y
+                            - z
+                        batteryPercent:
+                          type: number
+                        temperatureCelsius:
+                          type: number
+                        signalStrengthDbm:
+                          type: number
+                        velocityMetersPerSecond:
+                          type: number
+                        headingDegrees:
+                          type: number
+                        recordedAt:
+                          type: string
+                          format: date-time
+                        receivedAt:
+                          type: string
+                          format: date-time
+                      required:
+                        - telemetryId
+                        - sourceTelemetryId
+                        - schemaVersion
+                        - position
+                        - batteryPercent
+                        - temperatureCelsius
+                        - signalStrengthDbm
+                        - velocityMetersPerSecond
+                        - headingDegrees
+                        - recordedAt
+                        - receivedAt
+                  page:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                      nextCursor:
+                        type: string
+                        nullable: true
+                    required:
+                      - limit
+                      - nextCursor
+                required:
+                  - robotId
+                  - items
+                  - page
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        enum: *a3
+                      message:
+                        type: string
+                      requestId:
+                        type: string
+                    required:
+                      - code
+                      - message
+                      - requestId
+                required:
+                  - error
+  /health/live:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Process is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                required:
+                  - status
+  /health/ready:
+    get:
+      summary: Readiness probe
+      responses:
+        "200":
+          description: Required infrastructure reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                required:
+                  - status
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - not_ready
+                required:
+                  - status

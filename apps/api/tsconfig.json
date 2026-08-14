@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@prc/domain": ["../../libs/domain/src/index.ts"],
+      "@prc/ports": ["../../libs/ports/src/index.ts"],
+      "@prc/contracts": ["../../libs/contracts/src/index.ts"],
+      "@prc/application": ["../../libs/application/src/index.ts"],
+      "@prc/persistence-prisma": ["../../libs/infrastructure/persistence/prisma-postgres/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

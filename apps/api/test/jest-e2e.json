@@ -1,0 +1,21 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/../tsconfig.json"
+      }
+    ]
+  },
+  "moduleNameMapper": {
+    "^@prc/domain$": "<rootDir>/../../../libs/domain/src/index.ts",
+    "^@prc/ports$": "<rootDir>/../../../libs/ports/src/index.ts",
+    "^@prc/contracts$": "<rootDir>/../../../libs/contracts/src/index.ts",
+    "^@prc/application$": "<rootDir>/../../../libs/application/src/index.ts",
+    "^@prc/persistence-prisma$": "<rootDir>/../../../libs/infrastructure/persistence/prisma-postgres/src/index.ts"
+  }
+}
