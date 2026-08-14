@@ -1,11 +1,11 @@
 import { INestApplication, RequestMethod } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { seedRobots } from '@prc/persistence-prisma';
+import { PrismaClient } from '@prisma/client';
+import { createPrismaClient, seedRobots } from '@prc/persistence-prisma';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { ApiExceptionFilter } from '../src/filters/api-exception.filter';
 import { RequestIdMiddleware } from '../src/middleware/request-id.middleware';
-import { PrismaService } from '../src/persistence/prisma.service';
 
 function telemetryPayload(overrides: Record<string, unknown> = {}) {
   return {
@@ -25,7 +25,7 @@ function telemetryPayload(overrides: Record<string, unknown> = {}) {
 
 describe('API e2e', () => {
   let app: INestApplication;
-  let prisma: PrismaService;
+  let prisma: PrismaClient;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -46,13 +46,14 @@ describe('API e2e', () => {
     );
     await app.init();
 
-    prisma = app.get(PrismaService);
+    prisma = createPrismaClient();
     await prisma.robotTelemetry.deleteMany();
     await prisma.robotCurrentState.deleteMany();
     await seedRobots(prisma);
   });
 
   afterAll(async () => {
+    await prisma.$disconnect();
     await app.close();
   });
 

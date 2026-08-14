@@ -1,10 +1,14 @@
-import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Inject, Res } from '@nestjs/common';
+import { DatabaseReadiness } from '@prc/ports';
 import { Response } from 'express';
-import { PrismaService } from '../persistence/prisma.service';
+import { DATABASE_READINESS } from '../di/tokens';
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(DATABASE_READINESS)
+    private readonly readiness: DatabaseReadiness,
+  ) {}
 
   @Get('live')
   live() {
@@ -13,12 +17,11 @@ export class HealthController {
 
   @Get('ready')
   async ready(@Res({ passthrough: true }) res: Response) {
-    try {
-      await this.prisma.$queryRaw`SELECT 1`;
-      return { status: 'ok' };
-    } catch {
+    const ready = await this.readiness.isReady();
+    if (!ready) {
       res.status(HttpStatus.SERVICE_UNAVAILABLE);
       return { status: 'not_ready' };
     }
+    return { status: 'ok' };
   }
 }

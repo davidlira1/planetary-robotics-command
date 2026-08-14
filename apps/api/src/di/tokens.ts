@@ -5,3 +5,4 @@ export const ROBOT_CURRENT_STATE_REPOSITORY = Symbol(
 export const ROBOT_TELEMETRY_REPOSITORY = Symbol('ROBOT_TELEMETRY_REPOSITORY');
 export const UNIT_OF_WORK = Symbol('UNIT_OF_WORK');
 export const APP_LOGGER = Symbol('APP_LOGGER');
+export const DATABASE_READINESS = Symbol('DATABASE_READINESS');
