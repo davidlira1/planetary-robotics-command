@@ -13,6 +13,7 @@
     "seed": "ts-node --transpile-only prisma/seed.ts"
   },
   "dependencies": {
+    "@prc/application": "workspace:*",
     "@prc/domain": "workspace:*",
     "@prc/ports": "workspace:*",
     "@prisma/client": "^6.1.0"

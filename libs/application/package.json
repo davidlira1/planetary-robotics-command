@@ -9,6 +9,7 @@
     "test": "jest --config jest.config.js"
   },
   "dependencies": {
+    "@prc/contracts": "workspace:*",
     "@prc/domain": "workspace:*",
     "@prc/ports": "workspace:*",
     "ulid": "^2.3.0"

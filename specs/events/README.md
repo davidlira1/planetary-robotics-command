@@ -1,29 +1,29 @@
-# Future event contracts
+# Event contracts
 
-Do not implement messaging in Layer 1.
+Language-neutral integration contracts for Planetary Robotics Command.
 
-Language-independent envelope convention:
+## Source of truth
 
-```json
-{
-  "eventId": "evt_...",
-  "eventType": "robot.telemetry.received",
-  "eventVersion": 1,
-  "occurredAt": "2026-08-13T20:00:00.000Z",
-  "correlationId": "req_...",
-  "causationId": "req_...",
-  "payload": {}
-}
-```
+JSON Schema files in this directory are the polyglot integration artifacts.
 
-Intended application port (future):
+TypeScript Zod schemas under `@prc/contracts` are aligned to these schemas for runtime validation in the NestJS/TypeScript implementation.
 
-```ts
-interface EventPublisher {
-  publish(event: DomainEvent): Promise<void>;
-}
-```
+## Versioning
 
-Adapters later may include Azure Service Bus, Kafka, or RabbitMQ. Domain/application code must never instantiate cloud SDKs directly.
+- Breaking changes to an event type require a new `eventVersion` (e.g. v2).
+- Do not mutate a published v1 schema incompatibly.
+- Consumers must reject unsupported `eventVersion` values as permanent failures.
 
-JSON Schema artifacts for events should eventually live under `specs/events/`.
+## Envelope (v1)
+
+See `event-envelope.v1.schema.json`.
+
+## Events
+
+| eventType | eventVersion | Payload schema |
+|---|---|---|
+| `robot.telemetry.received` | 1 | `robot-telemetry-received.v1.schema.json` |
+
+## Portability
+
+Producers and consumers in NestJS, .NET, or Python should implement these JSON contracts without depending on TypeScript types as the sole source of truth.

@@ -1,86 +1,76 @@
-# Architecture (Layer 1)
+# Architecture
+
+## Layer 1 — HTTP + persistence
 
 ```text
 External Consumer
        │
        ▼
-   HTTP Adapter (apps/api — NestJS)
+   HTTP Adapter (apps/api)
        │
        ▼
-Application Layer (libs/application)
+Application Layer
        │
        ▼
-Domain / Ports (libs/domain, libs/ports)
+Domain / Ports
        │
        ▼
-PostgreSQL Adapter (libs/infrastructure/persistence/prisma-postgres)
+PostgreSQL Adapter
        │
        ▼
    PostgreSQL
 ```
 
-Dependencies point inward. Domain and application code never import NestJS, Prisma, or HTTP types.
-
-## Core concepts
-
-| Concept | Meaning |
-|---|---|
-| **Robot** | Stable identity and metadata (`id`, type, model, `operationalStatus`, …). |
-| **RobotCurrentState** | Latest known operational sample for efficient “where is D-04 now?” queries. At most one row per robot. |
-| **RobotTelemetry** | Immutable historical observation. Never updated after insert. |
-
-### RobotOperationalStatus vs future RobotHealthStatus
-
-`RobotOperationalStatus` (`OFFLINE | IDLE | ACTIVE | CHARGING | FAULTED`) describes what the robot is **operationally doing**.
-
-A future `RobotHealthStatus` (`HEALTHY | WARNING | CRITICAL`) will describe **telemetry-derived health**. These concepts must not be conflated. Health processing is **not** implemented in Layer 1.
-
-## Telemetry ingestion
-
-`POST /api/v1/telemetry` returns **202 Accepted** only after the Layer 1 transaction has **durably completed** (append history + conditional current-state update, or idempotent same-payload path). 202 means accepted into the system with possible future async processing (events/health) — not that persistence is still pending.
-
-### Ordering / current state
-
-- `recordedAt` is the **sole chronological authority** for current-state ordering.
-- Current state updates only when incoming `recordedAt` is **strictly greater** than stored.
-- Equal `recordedAt`: existing current state wins (no `receivedAt` / `telemetryId` tie-break).
-- History may still store multiple observations with the same `recordedAt` if `sourceTelemetryId`s differ.
-
-### Idempotency
-
-Unique `(robotId, sourceTelemetryId)`:
-
-- Same producer key + same observation content → **202** with existing `telemetryId`.
-- Same producer key + conflicting content → **409 `IDEMPOTENCY_CONFLICT`**.
-
-### schemaVersion
-
-Required integer. Layer 1 supports `schemaVersion = 1` only. Stored on each telemetry row and returned in history responses so future contract evolution does not assume every historical row has the newest shape.
-
-## Contracts
-
-Executable source of truth: Zod schemas in `libs/contracts`.
+## Layer 2 — messaging + health
 
 ```text
-libs/contracts → runtime validation → OpenAPI generation → specs/openapi/openapi.v1.yaml
+Telemetry API
+      │
+      v
+PostgreSQL Transaction
+      │
+      +---- Telemetry
+      +---- Current State
+      +---- Outbox
+              │
+              v
+        Outbox Publisher
+        (short claim txn, then publish outside DB)
+              │
+              v
+      Azure Service Bus topic
+      robot.telemetry.received
+              │
+              v
+      Health Subscription
+              │
+              v
+        Health Worker
+              │
+              v
+        PostgreSQL
+        Health + Alerts + ProcessedMessage
 ```
 
-The YAML is a versioned language-neutral artifact (for Angular/.NET/Python clients and alternate backends). Do not hand-edit it independently; use `pnpm openapi:export` / `pnpm openapi:check`.
+### Why the API does not publish directly
 
-## Pagination
+DB and Service Bus cannot share one local transaction. The API writes an outbox row atomically with telemetry. The publisher owns broker delivery.
 
-- Fleet (`GET /api/v1/robots`): order by `id` ASC; default limit 50; max 200; cursor encodes last `id`.
-- Telemetry history: order by `(recordedAt, telemetryId)` ASC or DESC; cursor encodes both; default limit 100; max 500.
+### Outbox claim window
 
-## Operational endpoints
+`FOR UPDATE SKIP LOCKED` runs only while claiming. Broker I/O is outside any open PostgreSQL transaction. If publish succeeds and the process crashes before `markPublished`, republish of the same `eventId` is expected (at-least-once). Consumers use inbox idempotency.
 
-Outside `/api/v1`:
+### Health vs operational status
 
-- `GET /health/live` — process up
-- `GET /health/ready` — PostgreSQL reachable
+- `RobotOperationalStatus` — what the robot is doing
+- `RobotHealthStatus` — derived telemetry health (`HEALTHY` / `WARNING` / `CRITICAL`)
 
-## Future extension ports (not implemented)
+Raw `RobotCurrentState` stays factual; `RobotHealthState` is interpretation.
 
-Messaging (`EventPublisher`), realtime, identity, AI provider, notification.
+### Messaging portability
 
-Event envelope convention: see `specs/events/README.md`.
+Azure Service Bus lives under `@prc/messaging-asb`. Application/health logic depends on `EventPublisher` and repositories only. Kafka/RabbitMQ would be new adapters.
+
+### Future ports (not Layer 2)
+
+Realtime, identity, AI, notifications.

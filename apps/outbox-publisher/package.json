@@ -1,0 +1,21 @@
+{
+  "name": "@prc/outbox-publisher",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "start:dev": "ts-node --transpile-only src/main.ts"
+  },
+  "dependencies": {
+    "@prc/messaging-asb": "workspace:*",
+    "@prc/persistence-prisma": "workspace:*",
+    "@prc/ports": "workspace:*",
+    "@prisma/client": "6.19.3",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}

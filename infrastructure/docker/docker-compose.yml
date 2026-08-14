@@ -16,6 +16,43 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - prc
+
+  sqledge:
+    container_name: prc-sqledge
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA:-Y}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Your_password123}
+    networks:
+      prc:
+        aliases:
+          - sqledge
+
+  servicebus-emulator:
+    container_name: prc-servicebus-emulator
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    pull_policy: always
+    volumes:
+      - ./servicebus/Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json
+    ports:
+      - "5672:5672"
+      - "5300:5300"
+    environment:
+      SQL_SERVER: sqledge
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Your_password123}
+      ACCEPT_EULA: ${ACCEPT_EULA:-Y}
+    depends_on:
+      - sqledge
+    networks:
+      prc:
+        aliases:
+          - sb-emulator
 
 volumes:
   prc_postgres_data:
+
+networks:
+  prc:
+    driver: bridge

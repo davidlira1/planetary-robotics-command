@@ -23,4 +23,9 @@ export interface RobotRepository {
   findAll(filters: RobotListFilters): Promise<RobotListResult>;
   findById(robotId: string): Promise<Robot | null>;
   exists(robotId: string): Promise<boolean>;
+  /**
+   * Acquire a transaction-scoped exclusive lock on the Robot row.
+   * Used to serialize health evaluation when RobotHealthState may not exist yet.
+   */
+  lockById(robotId: string): Promise<void>;
 }

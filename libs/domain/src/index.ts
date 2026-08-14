@@ -3,3 +3,7 @@ export * from './position';
 export * from './robot';
 export * from './robot-current-state';
 export * from './robot-telemetry';
+export * from './health-enums';
+export * from './health-thresholds';
+export * from './robot-health-state';
+export * from './alert';

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planetary-robotics-command.local/schemas/robot-telemetry-received.v1.schema.json",
+  "title": "RobotTelemetryReceivedPayloadV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "robotId",
+    "telemetryId",
+    "sourceTelemetryId",
+    "telemetrySchemaVersion",
+    "recordedAt",
+    "receivedAt",
+    "position",
+    "batteryPercent",
+    "temperatureCelsius",
+    "signalStrengthDbm",
+    "velocityMetersPerSecond",
+    "headingDegrees"
+  ],
+  "properties": {
+    "robotId": { "type": "string", "minLength": 1 },
+    "telemetryId": { "type": "string", "minLength": 1 },
+    "sourceTelemetryId": { "type": "string", "minLength": 1 },
+    "telemetrySchemaVersion": { "type": "integer", "const": 1 },
+    "recordedAt": { "type": "string", "format": "date-time" },
+    "receivedAt": { "type": "string", "format": "date-time" },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "batteryPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+    "temperatureCelsius": { "type": "number" },
+    "signalStrengthDbm": { "type": "number" },
+    "velocityMetersPerSecond": { "type": "number", "minimum": 0 },
+    "headingDegrees": { "type": "number", "minimum": 0, "exclusiveMaximum": 360 }
+  }
+}

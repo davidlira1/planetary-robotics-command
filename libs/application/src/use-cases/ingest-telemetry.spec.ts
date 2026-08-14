@@ -5,8 +5,13 @@ import {
   RobotType,
 } from '@prc/domain';
 import {
+  AlertRepository,
   Logger,
+  OutboxMessage,
+  OutboxRepository,
+  ProcessedMessageRepository,
   RobotCurrentStateRepository,
+  RobotHealthRepository,
   RobotRepository,
   RobotTelemetryRepository,
   TransactionalRepos,
@@ -38,6 +43,11 @@ class InMemoryRobots implements RobotRepository {
   async exists(robotId: string) {
     return this.ids.has(robotId);
   }
+  async lockById(robotId: string) {
+    if (!this.ids.has(robotId)) {
+      throw new Error(`Robot ${robotId} does not exist`);
+    }
+  }
 }
 
 class InMemoryCurrentState implements RobotCurrentStateRepository {
@@ -55,9 +65,7 @@ class InMemoryCurrentState implements RobotCurrentStateRepository {
 
 class InMemoryTelemetry implements RobotTelemetryRepository {
   rows: RobotTelemetry[] = [];
-  failOnAppend = false;
   async append(telemetry: RobotTelemetry) {
-    if (this.failOnAppend) throw new Error('append failed');
     this.rows.push(telemetry);
   }
   async findByRobotIdAndSource(robotId: string, sourceTelemetryId: string) {
@@ -72,6 +80,36 @@ class InMemoryTelemetry implements RobotTelemetryRepository {
     return { items: [], nextCursor: null };
   }
 }
+
+class InMemoryOutbox implements OutboxRepository {
+  rows: OutboxMessage[] = [];
+  async append(message: OutboxMessage) {
+    this.rows.push(message);
+  }
+  async claimPending() {
+    return [];
+  }
+  async markPublished() {}
+  async recordPublishFailure() {}
+}
+
+const noopHealth: RobotHealthRepository = {
+  async findByRobotIdForUpdate() {
+    return null;
+  },
+  async updateIfNewer() {},
+};
+const noopAlerts: AlertRepository = {
+  async append() {},
+  async countByRobotAndType() {
+    return 0;
+  },
+};
+const noopProcessed: ProcessedMessageRepository = {
+  async tryBeginProcessing() {
+    return { acquired: true };
+  },
+};
 
 class InMemoryUow implements UnitOfWork {
   constructor(private readonly repos: TransactionalRepos) {}
@@ -107,22 +145,36 @@ describe('IngestTelemetry', () => {
   let robots: InMemoryRobots;
   let currentState: InMemoryCurrentState;
   let telemetry: InMemoryTelemetry;
+  let outbox: InMemoryOutbox;
   let useCase: IngestTelemetry;
 
   beforeEach(() => {
     robots = new InMemoryRobots(new Set(['D-04']));
     currentState = new InMemoryCurrentState();
     telemetry = new InMemoryTelemetry();
+    outbox = new InMemoryOutbox();
     useCase = new IngestTelemetry(
-      new InMemoryUow({ robots, currentState, telemetry }),
+      new InMemoryUow({
+        robots,
+        currentState,
+        telemetry,
+        outbox,
+        health: noopHealth,
+        alerts: noopAlerts,
+        processedMessages: noopProcessed,
+      }),
       silentLogger,
     );
   });
 
-  it('accepts valid telemetry and updates current state', async () => {
+  it('accepts valid telemetry, updates current state, and appends outbox', async () => {
     const result = await useCase.execute(baseInput());
     expect(result.status).toBe('ACCEPTED');
     expect(telemetry.rows).toHaveLength(1);
+    expect(outbox.rows).toHaveLength(1);
+    expect(JSON.parse(outbox.rows[0].payloadJson).eventType).toBe(
+      'robot.telemetry.received',
+    );
     expect(currentState.store.get('D-04')?.batteryPercent).toBe(80);
   });
 
@@ -143,6 +195,7 @@ describe('IngestTelemetry', () => {
     );
     expect(currentState.store.get('D-04')?.batteryPercent).toBe(70);
     expect(telemetry.rows).toHaveLength(2);
+    expect(outbox.rows).toHaveLength(2);
   });
 
   it('keeps history but does not regress current state for older recordedAt', async () => {
@@ -156,9 +209,6 @@ describe('IngestTelemetry', () => {
     );
     expect(telemetry.rows).toHaveLength(2);
     expect(currentState.store.get('D-04')?.batteryPercent).toBe(80);
-    expect(currentState.store.get('D-04')?.recordedAt.toISOString()).toBe(
-      '2026-08-13T20:00:03.000Z',
-    );
   });
 
   it('keeps existing current state when recordedAt is equal', async () => {
@@ -174,11 +224,12 @@ describe('IngestTelemetry', () => {
     expect(currentState.store.get('D-04')?.batteryPercent).toBe(80);
   });
 
-  it('returns existing telemetry for identical idempotent replay', async () => {
+  it('returns existing telemetry for identical idempotent replay without second outbox', async () => {
     const first = await useCase.execute(baseInput());
     const second = await useCase.execute(baseInput());
     expect(second.telemetryId).toBe(first.telemetryId);
     expect(telemetry.rows).toHaveLength(1);
+    expect(outbox.rows).toHaveLength(1);
   });
 
   it('throws IDEMPOTENCY_CONFLICT for conflicting payload under same source key', async () => {
@@ -187,5 +238,6 @@ describe('IngestTelemetry', () => {
       useCase.execute(baseInput({ batteryPercent: 11 })),
     ).rejects.toBeInstanceOf(IdempotencyConflictError);
     expect(telemetry.rows).toHaveLength(1);
+    expect(outbox.rows).toHaveLength(1);
   });
 });

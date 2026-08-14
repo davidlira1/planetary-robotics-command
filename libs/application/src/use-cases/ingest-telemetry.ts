@@ -4,7 +4,11 @@ import {
   RobotTelemetry,
   TELEMETRY_SCHEMA_VERSION_V1,
 } from '@prc/domain';
-import { Logger, UnitOfWork } from '@prc/ports';
+import {
+  ROBOT_TELEMETRY_RECEIVED_EVENT_TYPE,
+  RobotTelemetryReceivedEventV1,
+} from '@prc/contracts';
+import { Logger, OutboxMessage, UnitOfWork } from '@prc/ports';
 import { ulid } from 'ulid';
 import { IdempotencyConflictError, RobotNotFoundError } from '../errors';
 
@@ -48,6 +52,35 @@ function observationMatches(
   );
 }
 
+function buildTelemetryReceivedEvent(
+  telemetry: RobotTelemetry,
+  correlationId: string,
+  occurredAt: Date,
+): RobotTelemetryReceivedEventV1 {
+  return {
+    eventId: `evt_${ulid()}`,
+    eventType: ROBOT_TELEMETRY_RECEIVED_EVENT_TYPE,
+    eventVersion: 1,
+    occurredAt: occurredAt.toISOString(),
+    correlationId,
+    causationId: telemetry.id,
+    payload: {
+      robotId: telemetry.robotId,
+      telemetryId: telemetry.id,
+      sourceTelemetryId: telemetry.sourceTelemetryId,
+      telemetrySchemaVersion: 1,
+      recordedAt: telemetry.recordedAt.toISOString(),
+      receivedAt: telemetry.receivedAt.toISOString(),
+      position: telemetry.position,
+      batteryPercent: telemetry.batteryPercent,
+      temperatureCelsius: telemetry.temperatureCelsius,
+      signalStrengthDbm: telemetry.signalStrengthDbm,
+      velocityMetersPerSecond: telemetry.velocityMetersPerSecond,
+      headingDegrees: telemetry.headingDegrees,
+    },
+  };
+}
+
 export class IngestTelemetry {
   constructor(
     private readonly unitOfWork: UnitOfWork,
@@ -56,7 +89,6 @@ export class IngestTelemetry {
 
   async execute(input: IngestTelemetryInput): Promise<IngestTelemetryResult> {
     if (input.schemaVersion !== TELEMETRY_SCHEMA_VERSION_V1) {
-      // Contracts layer should reject first; defense in depth.
       throw new Error(`Unsupported schemaVersion: ${input.schemaVersion}`);
     }
 
@@ -123,13 +155,39 @@ export class IngestTelemetry {
         receivedAt,
       };
 
+      const correlationId = input.requestId?.trim() || `corr_${ulid()}`;
+      const event = buildTelemetryReceivedEvent(
+        telemetry,
+        correlationId,
+        receivedAt,
+      );
+
+      const outbox: OutboxMessage = {
+        id: `obx_${ulid()}`,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        eventVersion: event.eventVersion,
+        occurredAt: receivedAt,
+        correlationId: event.correlationId,
+        causationId: event.causationId,
+        payloadJson: JSON.stringify(event),
+        createdAt: receivedAt,
+        publishedAt: null,
+        publishAttempts: 0,
+        lastPublishError: null,
+        claimedUntil: null,
+      };
+
       await repos.telemetry.append(telemetry);
       await repos.currentState.updateIfNewer(currentState);
+      await repos.outbox.append(outbox);
 
       this.logger.info('Telemetry accepted', {
         requestId: input.requestId,
         robotId: input.robotId,
         operation: 'IngestTelemetry',
+        eventId: event.eventId,
+        correlationId,
       });
 
       return {

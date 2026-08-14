@@ -6,5 +6,7 @@ module.exports = {
   moduleNameMapper: {
     '^@prc/domain$': '<rootDir>/../../../domain/src/index.ts',
     '^@prc/ports$': '<rootDir>/../../../ports/src/index.ts',
+    '^@prc/application$': '<rootDir>/../../../application/src/index.ts',
+    '^@prc/contracts$': '<rootDir>/../../../contracts/src/index.ts',
   },
 };

@@ -55,6 +55,18 @@ export class PrismaRobotRepository implements RobotRepository {
     });
     return row !== null;
   }
+
+  async lockById(robotId: string): Promise<void> {
+    const rows = await this.db.$queryRaw<Array<{ id: string }>>`
+      SELECT "id"
+      FROM "Robot"
+      WHERE "id" = ${robotId}
+      FOR UPDATE
+    `;
+    if (rows.length === 0) {
+      throw new Error(`Robot ${robotId} does not exist`);
+    }
+  }
 }
 
 export type { RobotType, RobotOperationalStatus };

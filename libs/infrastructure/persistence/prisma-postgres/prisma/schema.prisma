@@ -23,6 +23,34 @@ enum RobotOperationalStatus {
   FAULTED
 }
 
+enum RobotHealthStatus {
+  HEALTHY
+  WARNING
+  CRITICAL
+}
+
+enum HealthDimensionStatus {
+  NORMAL
+  WARNING
+  CRITICAL
+}
+
+enum AlertSeverity {
+  WARNING
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+}
+
+enum AlertType {
+  LOW_BATTERY
+  HIGH_TEMPERATURE
+  SIGNAL_DEGRADED
+}
+
 model Robot {
   id                String                 @id
   displayName       String
@@ -33,6 +61,8 @@ model Robot {
   updatedAt         DateTime               @updatedAt
   currentState      RobotCurrentState?
   telemetry         RobotTelemetry[]
+  healthState       RobotHealthState?
+  alerts            Alert[]
 }
 
 model RobotCurrentState {
@@ -71,4 +101,63 @@ model RobotTelemetry {
   @@index([robotId])
   @@index([robotId, recordedAt])
   @@index([recordedAt])
+}
+
+model OutboxMessage {
+  id               String    @id
+  eventId          String    @unique
+  eventType        String
+  eventVersion     Int
+  occurredAt       DateTime
+  correlationId    String
+  causationId      String
+  payloadJson      String
+  createdAt        DateTime  @default(now())
+  publishedAt      DateTime?
+  publishAttempts  Int       @default(0)
+  lastPublishError String?
+  claimedUntil     DateTime?
+
+  @@index([publishedAt, createdAt])
+  @@index([claimedUntil])
+}
+
+model RobotHealthState {
+  robotId                   String                @id
+  status                    RobotHealthStatus
+  batteryStatus             HealthDimensionStatus
+  temperatureStatus         HealthDimensionStatus
+  signalStatus              HealthDimensionStatus
+  evaluatedFromTelemetryId  String
+  evaluatedFromRecordedAt   DateTime
+  updatedAt                 DateTime
+  robot                     Robot                 @relation(fields: [robotId], references: [id], onDelete: Restrict)
+}
+
+model Alert {
+  id                String        @id
+  robotId           String
+  type              AlertType
+  severity          AlertSeverity
+  status            AlertStatus
+  title             String
+  message           String
+  sourceTelemetryId String
+  sourceEventId     String
+  createdAt         DateTime      @default(now())
+  acknowledgedAt    DateTime?
+  acknowledgedBy    String?
+  robot             Robot         @relation(fields: [robotId], references: [id], onDelete: Restrict)
+
+  @@index([robotId, type])
+  @@index([sourceEventId])
+}
+
+model ProcessedMessage {
+  consumer    String
+  eventId     String
+  processedAt DateTime @default(now())
+
+  @@id([consumer, eventId])
+  @@index([processedAt])
 }
