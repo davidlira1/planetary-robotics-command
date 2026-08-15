@@ -4,7 +4,12 @@ import {
   extendZodWithOpenApi,
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
+import {
+  ListAlertsQuerySchema,
+  ListAlertsResponseSchema,
+} from '../alerts';
 import { ApiErrorBodySchema } from '../errors';
+import { FleetSnapshotResponseSchema } from '../fleet';
 import {
   ListRobotsQuerySchema,
   ListRobotsResponseSchema,
@@ -28,6 +33,8 @@ export function createOpenApiRegistry(): OpenAPIRegistry {
   registry.register('ListRobotsResponse', ListRobotsResponseSchema);
   registry.register('RobotDetail', RobotDetailSchema);
   registry.register('ListTelemetryResponse', ListTelemetryResponseSchema);
+  registry.register('FleetSnapshotResponse', FleetSnapshotResponseSchema);
+  registry.register('ListAlertsResponse', ListAlertsResponseSchema);
 
   const errorResponse = {
     description: 'Error',
@@ -72,6 +79,25 @@ export function createOpenApiRegistry(): OpenAPIRegistry {
 
   registry.registerPath({
     method: 'get',
+    path: '/api/v1/fleet',
+    summary: 'Fleet snapshot for dashboard / 3D viewport',
+    description:
+      'Returns all robots with current telemetry state and derived health in one response. currentState and health may be null when no data exists yet.',
+    responses: {
+      200: {
+        description: 'Complete fleet snapshot ordered by robot id ascending',
+        content: {
+          'application/json': {
+            schema: FleetSnapshotResponseSchema,
+          },
+        },
+      },
+      500: errorResponse,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
     path: '/api/v1/robots',
     summary: 'List robots (fleet overview)',
     request: {
@@ -100,7 +126,7 @@ export function createOpenApiRegistry(): OpenAPIRegistry {
     },
     responses: {
       200: {
-        description: 'Robot detail with current state',
+        description: 'Robot detail with current state and health',
         content: {
           'application/json': {
             schema: RobotDetailSchema,
@@ -131,6 +157,27 @@ export function createOpenApiRegistry(): OpenAPIRegistry {
       },
       400: errorResponse,
       404: errorResponse,
+      500: errorResponse,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/v1/alerts',
+    summary: 'List alerts',
+    request: {
+      query: ListAlertsQuerySchema,
+    },
+    responses: {
+      200: {
+        description: 'Cursor-paginated alerts newest first',
+        content: {
+          'application/json': {
+            schema: ListAlertsResponseSchema,
+          },
+        },
+      },
+      400: errorResponse,
       500: errorResponse,
     },
   });
@@ -187,7 +234,7 @@ export function generateOpenApiDocument(): Record<string, unknown> {
       title: 'Planetary Robotics Command API',
       version: '1.0.0',
       description:
-        'Layer 1 HTTP contract. Generated from @prc/contracts Zod schemas — do not hand-edit the YAML artifact.',
+        'HTTP contract generated from @prc/contracts Zod schemas — do not hand-edit the YAML artifact.',
     },
     servers: [{ url: 'http://localhost:3000' }],
   }) as unknown as Record<string, unknown>;

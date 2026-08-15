@@ -151,6 +151,8 @@ model Alert {
 
   @@index([robotId, type])
   @@index([sourceEventId])
+  @@index([createdAt, id])
+  @@index([robotId, createdAt])
 }
 
 model ProcessedMessage {

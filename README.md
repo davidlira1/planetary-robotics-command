@@ -5,6 +5,7 @@ Enterprise-oriented planetary robotics command platform.
 - **Layer 1:** NestJS API, hexagonal domain/application, Prisma/PostgreSQL, telemetry ingest, fleet/telemetry reads
 - **Layer 2:** Transactional outbox, Azure Service Bus (local emulator), outbox publisher, health worker, derived health + transition alerts
 - **Layer 3:** Robot fleet simulator posting believable telemetry through the public HTTP API
+- **Layer 4:** Dashboard read models — `GET /fleet`, alerts list, health on robot detail (Angular/Three.js-ready)
 
 ## Prerequisites
 
@@ -67,6 +68,26 @@ Critical battery (8%):
 curl -s -X POST http://localhost:3000/api/v1/telemetry \
   -H 'Content-Type: application/json' \
   -d '{"sourceTelemetryId":"demo-c1","robotId":"D-04","schemaVersion":1,"recordedAt":"2026-08-14T20:02:00.000Z","position":{"x":1,"y":2,"z":3},"batteryPercent":8,"temperatureCelsius":40,"signalStrengthDbm":-70,"velocityMetersPerSecond":1,"headingDegrees":10}'
+```
+
+## Dashboard read examples (Layer 4)
+
+Fleet snapshot (3D viewport bootstrap):
+
+```bash
+curl -s http://localhost:3000/api/v1/fleet | jq .
+```
+
+Robot detail (includes `health`, which may be `null`):
+
+```bash
+curl -s http://localhost:3000/api/v1/robots/D-04 | jq .
+```
+
+Open alerts (newest first; optional `robotId`, `severity`, `status`, `limit`, `cursor`):
+
+```bash
+curl -s 'http://localhost:3000/api/v1/alerts?status=OPEN&limit=20' | jq .
 ```
 
 ## Verify health / alerts (DB)

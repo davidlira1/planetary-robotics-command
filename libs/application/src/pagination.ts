@@ -56,3 +56,39 @@ export function decodeTelemetryCursor(cursor: string): {
     throw new InvalidCursorError('Invalid telemetry cursor.');
   }
 }
+
+export function encodeAlertCursor(createdAt: Date, alertId: string): string {
+  return Buffer.from(
+    JSON.stringify({
+      createdAt: createdAt.toISOString(),
+      alertId,
+    }),
+    'utf8',
+  ).toString('base64url');
+}
+
+export function decodeAlertCursor(cursor: string): {
+  createdAt: Date;
+  alertId: string;
+} {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as {
+      createdAt?: unknown;
+      alertId?: unknown;
+    };
+    if (
+      typeof parsed.createdAt !== 'string' ||
+      typeof parsed.alertId !== 'string' ||
+      parsed.alertId.length === 0
+    ) {
+      throw new Error('invalid');
+    }
+    const createdAt = new Date(parsed.createdAt);
+    if (Number.isNaN(createdAt.getTime())) {
+      throw new Error('invalid date');
+    }
+    return { createdAt, alertId: parsed.alertId };
+  } catch {
+    throw new InvalidCursorError('Invalid alert list cursor.');
+  }
+}

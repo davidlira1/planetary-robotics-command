@@ -7,5 +7,6 @@ export { PrismaOutboxRepository } from './outbox-repository';
 export { PrismaRobotHealthRepository } from './robot-health-repository';
 export { PrismaAlertRepository } from './alert-repository';
 export { PrismaProcessedMessageRepository } from './processed-message-repository';
+export { PrismaFleetReadRepository } from './fleet-read-repository';
 export { seedRobots } from './seed';
 export * from './mappers';

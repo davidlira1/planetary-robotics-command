@@ -102,6 +102,28 @@ Cartesian meters: `x` east/west, `z` north/south, `y` altitude (Three.js-friendl
 
 Physics uses actual monotonic `deltaTime` (clamped). Telemetry emission is a separate interval that freezes an immutable `TelemetrySample` before send. Each robot allows at most one in-flight send; overlapping intervals skip rather than queue unboundedly. Retries reuse the same snapshot.
 
-### Future ports (not Layer 3)
+## Layer 4 — dashboard read models
 
-Realtime UI, identity, AI, notifications, missions/commands.
+```text
+Angular + Three.js (future)
+        |
+        v
+Dashboard Read API
+  GET /api/v1/fleet
+  GET /api/v1/robots/:id   (+ health)
+  GET /api/v1/alerts
+  GET /api/v1/robots/:id/telemetry
+        |
+        +--> FleetReadRepository (application read models)
+        +--> AlertRepository.list
+        +--> RobotHealthRepository.findByRobotId
+        |
+        v
+PostgreSQL
+```
+
+Layer 4 composes Robot + RobotCurrentState + RobotHealthState for UI bootstrapping. It does not alter telemetry ingestion, outbox, or health-worker write paths. `currentState` and `health` may be null when no data exists yet.
+
+### Future ports (not Layer 4)
+
+Realtime UI (WebSockets), identity, AI, notifications, missions/commands.

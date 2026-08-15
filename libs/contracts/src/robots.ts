@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { RobotHealthSchema } from './health';
 
 export const RobotTypeSchema = z.enum([
   'SCOUT',
@@ -51,6 +52,7 @@ export const RobotDetailSchema = z.object({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   currentState: CurrentStateSchema.nullable(),
+  health: RobotHealthSchema.nullable(),
 });
 
 export const PageSchema = z.object({

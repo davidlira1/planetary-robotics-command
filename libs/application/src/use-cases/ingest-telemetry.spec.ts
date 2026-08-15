@@ -94,6 +94,9 @@ class InMemoryOutbox implements OutboxRepository {
 }
 
 const noopHealth: RobotHealthRepository = {
+  async findByRobotId() {
+    return null;
+  },
   async findByRobotIdForUpdate() {
     return null;
   },
@@ -103,6 +106,9 @@ const noopAlerts: AlertRepository = {
   async append() {},
   async countByRobotAndType() {
     return 0;
+  },
+  async list() {
+    return { items: [], nextCursor: null };
   },
 };
 const noopProcessed: ProcessedMessageRepository = {

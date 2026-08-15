@@ -32,6 +32,9 @@ const silentLogger: Logger = {
 
 class MemHealth implements RobotHealthRepository {
   state: RobotHealthState | null = null;
+  async findByRobotId() {
+    return this.state;
+  }
   async findByRobotIdForUpdate() {
     return this.state;
   }
@@ -53,6 +56,9 @@ class MemAlerts implements AlertRepository {
   }
   async countByRobotAndType() {
     return this.rows.length;
+  }
+  async list() {
+    return { items: [], nextCursor: null };
   }
 }
 

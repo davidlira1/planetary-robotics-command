@@ -58,6 +58,10 @@ describe('API e2e', () => {
   });
 
   beforeEach(async () => {
+    await prisma.alert.deleteMany();
+    await prisma.processedMessage.deleteMany();
+    await prisma.outboxMessage.deleteMany();
+    await prisma.robotHealthState.deleteMany();
     await prisma.robotTelemetry.deleteMany();
     await prisma.robotCurrentState.deleteMany();
   });
@@ -252,7 +256,7 @@ describe('API e2e', () => {
     expect(res.body.page.limit).toBe(50);
   });
 
-  it('GET /robots/:id returns detail', async () => {
+  it('GET /robots/:id returns detail with null health when unevaluated', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/telemetry')
       .send(telemetryPayload())
@@ -262,6 +266,110 @@ describe('API e2e', () => {
       .expect(200);
     expect(res.body.id).toBe('D-04');
     expect(res.body.currentState.batteryPercent).toBe(82.4);
+    expect(res.body.health).toBeNull();
+  });
+
+  it('GET /fleet returns five seeded robots with nullable state/health', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/fleet')
+      .expect(200);
+    expect(res.body.robots.map((r: { id: string }) => r.id)).toEqual([
+      'D-04',
+      'H-17',
+      'M-12',
+      'S-03',
+      'W-08',
+    ]);
+    expect(res.body.robots.every((r: { health: unknown }) => r.health === null)).toBe(
+      true,
+    );
+
+    await request(app.getHttpServer())
+      .post('/api/v1/telemetry')
+      .send(telemetryPayload())
+      .expect(202);
+    await prisma.robotHealthState.create({
+      data: {
+        robotId: 'D-04',
+        status: 'HEALTHY',
+        batteryStatus: 'NORMAL',
+        temperatureStatus: 'NORMAL',
+        signalStatus: 'NORMAL',
+        evaluatedFromTelemetryId: 'tel_e2e',
+        evaluatedFromRecordedAt: new Date('2026-08-13T20:00:03.000Z'),
+        updatedAt: new Date('2026-08-13T20:00:04.000Z'),
+      },
+    });
+
+    const fleet = await request(app.getHttpServer())
+      .get('/api/v1/fleet')
+      .expect(200);
+    const d04 = fleet.body.robots.find((r: { id: string }) => r.id === 'D-04');
+    expect(d04.currentState.batteryPercent).toBe(82.4);
+    expect(d04.health.status).toBe('HEALTHY');
+  });
+
+  it('GET /alerts supports filters, cursor, and validation', async () => {
+    await prisma.alert.createMany({
+      data: [
+        {
+          id: 'alrt_e2e_1',
+          robotId: 'D-04',
+          type: 'LOW_BATTERY',
+          severity: 'WARNING',
+          status: 'OPEN',
+          title: 't1',
+          message: 'm1',
+          sourceTelemetryId: 's1',
+          sourceEventId: 'e1',
+          createdAt: new Date('2026-08-14T20:00:02.000Z'),
+        },
+        {
+          id: 'alrt_e2e_2',
+          robotId: 'H-17',
+          type: 'HIGH_TEMPERATURE',
+          severity: 'CRITICAL',
+          status: 'OPEN',
+          title: 't2',
+          message: 'm2',
+          sourceTelemetryId: 's2',
+          sourceEventId: 'e2',
+          createdAt: new Date('2026-08-14T20:00:01.000Z'),
+        },
+      ],
+    });
+
+    const all = await request(app.getHttpServer())
+      .get('/api/v1/alerts')
+      .expect(200);
+    expect(all.body.items.map((a: { id: string }) => a.id)).toEqual([
+      'alrt_e2e_1',
+      'alrt_e2e_2',
+    ]);
+
+    const filtered = await request(app.getHttpServer())
+      .get('/api/v1/alerts?robotId=D-04&severity=WARNING&status=OPEN')
+      .expect(200);
+    expect(filtered.body.items).toHaveLength(1);
+    expect(filtered.body.items[0].id).toBe('alrt_e2e_1');
+
+    const page = await request(app.getHttpServer())
+      .get('/api/v1/alerts?limit=1')
+      .expect(200);
+    expect(page.body.items).toHaveLength(1);
+    expect(page.body.page.nextCursor).toBeTruthy();
+
+    const page2 = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?limit=1&cursor=${encodeURIComponent(page.body.page.nextCursor)}`)
+      .expect(200);
+    expect(page2.body.items[0].id).toBe('alrt_e2e_2');
+
+    await request(app.getHttpServer())
+      .get('/api/v1/alerts?limit=0')
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/api/v1/alerts?severity=LOUD')
+      .expect(400);
   });
 
   it('GET telemetry history supports order and max limit', async () => {

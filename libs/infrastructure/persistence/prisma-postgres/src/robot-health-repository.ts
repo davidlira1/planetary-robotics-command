@@ -33,6 +33,13 @@ function toDomain(row: {
 export class PrismaRobotHealthRepository implements RobotHealthRepository {
   constructor(private readonly db: Client) {}
 
+  async findByRobotId(robotId: string): Promise<RobotHealthState | null> {
+    const row = await this.db.robotHealthState.findUnique({
+      where: { robotId },
+    });
+    return row ? toDomain(row) : null;
+  }
+
   async findByRobotIdForUpdate(robotId: string): Promise<RobotHealthState | null> {
     const rows = await this.db.$queryRaw<
       Array<{
