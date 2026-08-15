@@ -3,3 +3,4 @@ packages:
   - 'libs/*'
   - 'libs/infrastructure/persistence/*'
   - 'libs/infrastructure/messaging/*'
+  - 'libs/infrastructure/http/*'

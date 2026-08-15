@@ -1,0 +1,21 @@
+{
+  "name": "@prc/robot-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "start:dev": "ts-node --transpile-only src/main.ts"
+  },
+  "dependencies": {
+    "@prc/http-telemetry-producer": "workspace:*",
+    "@prc/ports": "workspace:*",
+    "@prc/simulation": "workspace:*",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}

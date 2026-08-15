@@ -71,6 +71,37 @@ Raw `RobotCurrentState` stays factual; `RobotHealthState` is interpretation.
 
 Azure Service Bus lives under `@prc/messaging-asb`. Application/health logic depends on `EventPublisher` and repositories only. Kafka/RabbitMQ would be new adapters.
 
-### Future ports (not Layer 2)
+## Layer 3 — simulated robot fleet
 
-Realtime, identity, AI, notifications.
+```text
+Simulated Robot Fleet
+(@prc/simulation + apps/robot-simulator)
+        |
+        | TelemetryProducer (transport-neutral TelemetrySample)
+        v
+HttpTelemetryProducer
+        |
+        | HTTP POST /api/v1/telemetry
+        v
+Telemetry API
+        |
+        v
+existing Layer 1/2 pipeline
+(outbox → Service Bus → health worker)
+```
+
+### Why the simulator uses HTTP
+
+The simulator represents an external device/gateway. It must not write PostgreSQL, append to Service Bus, or import Prisma. Calling the public ingest API exercises the same path a real robot fleet would use and keeps the simulator replaceable later.
+
+### Coordinate conventions
+
+Cartesian meters: `x` east/west, `z` north/south, `y` altitude (Three.js-friendly). Ground robots stay near `y = 0`; drones operate with `y > 0`.
+
+### Tick vs telemetry / backpressure
+
+Physics uses actual monotonic `deltaTime` (clamped). Telemetry emission is a separate interval that freezes an immutable `TelemetrySample` before send. Each robot allows at most one in-flight send; overlapping intervals skip rather than queue unboundedly. Retries reuse the same snapshot.
+
+### Future ports (not Layer 3)
+
+Realtime UI, identity, AI, notifications, missions/commands.

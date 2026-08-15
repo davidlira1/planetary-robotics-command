@@ -4,6 +4,7 @@ Enterprise-oriented planetary robotics command platform.
 
 - **Layer 1:** NestJS API, hexagonal domain/application, Prisma/PostgreSQL, telemetry ingest, fleet/telemetry reads
 - **Layer 2:** Transactional outbox, Azure Service Bus (local emulator), outbox publisher, health worker, derived health + transition alerts
+- **Layer 3:** Robot fleet simulator posting believable telemetry through the public HTTP API
 
 ## Prerequisites
 
@@ -23,15 +24,24 @@ pnpm seed
 pnpm build
 ```
 
-Start processes (three terminals):
+Start processes (five terminals for full pipeline + simulator):
 
 ```bash
-pnpm dev:api            # http://localhost:3000/docs
-pnpm dev:outbox         # publishes outbox → Service Bus
-pnpm dev:health         # consumes health subscription
+pnpm docker:up          # Terminal 1 (if not already running)
+pnpm dev:api            # Terminal 2 — http://localhost:3000/docs
+pnpm dev:outbox         # Terminal 3 — publishes outbox → Service Bus
+pnpm dev:health         # Terminal 4 — consumes health subscription
+pnpm dev:simulator      # Terminal 5 — fleet telemetry via HTTP
 ```
 
-Or one-shot setup helper: `pnpm setup` then the three `dev:*` commands.
+Or one-shot setup helper: `pnpm setup` then the `dev:*` commands.
+
+### Simulator demo notes
+
+- Default fleet: `D-04`, `H-17`, `W-08`, `M-12`, `S-03` (matches seed IDs; simulator does not import Prisma seed code).
+- Optional threshold scenario: set `SIM_D04_BATTERY=19` in `.env` to start the drone near the battery WARNING band.
+- Deterministic runs: set `SIMULATION_SEED=12345`.
+- Debug tick skips: `SIMULATOR_DEBUG=1`.
 
 ## Example telemetry
 
@@ -67,6 +77,14 @@ docker exec -it prc-postgres psql -U prc -d prc -c 'SELECT id, type, severity, "
 docker exec -it prc-postgres psql -U prc -d prc -c 'SELECT "eventId", "publishedAt" FROM "OutboxMessage" ORDER BY "createdAt";'
 ```
 
+After the simulator has run for several seconds:
+
+```bash
+docker exec -it prc-postgres psql -U prc -d prc -c 'SELECT COUNT(*) FROM "RobotTelemetry";'
+docker exec -it prc-postgres psql -U prc -d prc -c 'SELECT "robotId", "batteryPercent", "recordedAt" FROM "RobotCurrentState";'
+docker exec -it prc-postgres psql -U prc -d prc -c 'SELECT "consumerName", COUNT(*) FROM "ProcessedMessage" GROUP BY "consumerName";'
+```
+
 ## Service Bus emulator / DLQ
 
 - Emulator AMQP: `localhost:5672`
@@ -90,4 +108,4 @@ pnpm test:integration
 
 ## Out of scope (so far)
 
-Angular, Three.js, WebSockets, simulator, missions, commands, auth, AI, SMS/email.
+Angular, Three.js, WebSockets, missions, commands, auth, AI, SMS/email.

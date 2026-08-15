@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@prc/domain": ["libs/domain/src/index.ts"],
+      "@prc/ports": ["libs/ports/src/index.ts"],
+      "@prc/contracts": ["libs/contracts/src/index.ts"],
+      "@prc/application": ["libs/application/src/index.ts"],
+      "@prc/persistence-prisma": ["libs/infrastructure/persistence/prisma-postgres/src/index.ts"],
+      "@prc/messaging-asb": ["libs/infrastructure/messaging/azure-service-bus/src/index.ts"],
+      "@prc/simulation": ["libs/simulation/src/index.ts"],
+      "@prc/http-telemetry-producer": ["libs/infrastructure/http/telemetry-producer/src/index.ts"]
+    }
+  },
+  "include": [
+    "apps/**/*.ts",
+    "libs/**/*.ts"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts"
+  ]
+}

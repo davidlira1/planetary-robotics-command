@@ -1,1 +1,0 @@
-{"version":3,"file":"robot-health-repository.d.ts","sourceRoot":"","sources":["robot-health-repository.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,gBAAgB,EAAE,MAAM,aAAa,CAAC;AAE/C,MAAM,WAAW,qBAAqB;IACpC,sFAAsF;IACtF,sBAAsB,CAAC,OAAO,EAAE,MAAM,GAAG,OAAO,CAAC,gBAAgB,GAAG,IAAI,CAAC,CAAC;IAC1E,qFAAqF;IACrF,aAAa,CAAC,KAAK,EAAE,gBAAgB,GAAG,OAAO,CAAC,IAAI,CAAC,CAAC;CACvD"}

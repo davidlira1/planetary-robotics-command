@@ -1,1 +1,0 @@
-{"version":3,"file":"robot-current-state-repository.d.ts","sourceRoot":"","sources":["robot-current-state-repository.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,iBAAiB,EAAE,MAAM,aAAa,CAAC;AAEhD,MAAM,WAAW,2BAA2B;IAC1C,aAAa,CAAC,OAAO,EAAE,MAAM,GAAG,OAAO,CAAC,iBAAiB,GAAG,IAAI,CAAC,CAAC;IAClE;;;OAGG;IACH,aAAa,CAAC,YAAY,EAAE,iBAAiB,GAAG,OAAO,CAAC,IAAI,CAAC,CAAC;CAC/D"}
