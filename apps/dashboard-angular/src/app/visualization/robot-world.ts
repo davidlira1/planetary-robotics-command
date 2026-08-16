@@ -27,8 +27,10 @@ export interface RobotWorld {
   initialize(host: HTMLElement, hooks: { onRobotSelected(id: string): void }): void;
   syncFleet(robots: readonly RobotWorldRobot[]): void;
   setSelectedRobot(robotId: string | null): void;
+  fitFleet(): void;
   /**
-   * Moves orbit focus to the robot. Does not animate or reposition the camera.
+   * Animates the camera to a useful inspection distance from the robot.
+   * Preserves the current viewing direction relative to the orbit target.
    */
   focusRobot(robotId: string): void;
   resize(width: number, height: number): void;

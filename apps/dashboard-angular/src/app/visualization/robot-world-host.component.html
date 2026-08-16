@@ -4,5 +4,11 @@
     <b>SECTOR 07</b>
   </div>
   <div #host class="canvas-host"></div>
-  <div class="hint">◆ ROBOT &nbsp;&nbsp; ○ BASE &nbsp;&nbsp; DRAG ORBIT · SCROLL ZOOM</div>
+  <div class="hint">◆ ROBOT &nbsp;&nbsp; DRAG ORBIT · SCROLL ZOOM</div>
+  <div class="world-controls">
+    <button type="button" (click)="onFitFleet()">FIT FLEET</button>
+    <button type="button" [disabled]="!canFocusSelected()" (click)="onFocusSelected()">
+      FOCUS SELECTED
+    </button>
+  </div>
 </div>

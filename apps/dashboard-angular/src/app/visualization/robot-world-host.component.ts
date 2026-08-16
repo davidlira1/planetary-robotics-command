@@ -1,6 +1,7 @@
 import {
   afterNextRender,
   Component,
+  computed,
   effect,
   ElementRef,
   inject,
@@ -27,6 +28,16 @@ export class RobotWorldHostComponent implements OnDestroy {
   private readonly world = inject(ROBOT_WORLD);
   private observer: ResizeObserver | null = null;
 
+  readonly canFocusSelected = computed(() => {
+    const id = this.fleet.selectedRobotId();
+    if (!id) {
+      return false;
+    }
+    return mapFleetToWorldRobots(this.fleet.robots()).some(
+      (robot) => robot.id === id && robot.position !== null,
+    );
+  });
+
   constructor() {
     afterNextRender(() => this.boot());
     effect(() => {
@@ -40,6 +51,18 @@ export class RobotWorldHostComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.observer?.disconnect();
     this.world.destroy();
+  }
+
+  onFitFleet(): void {
+    this.world.fitFleet();
+  }
+
+  onFocusSelected(): void {
+    const id = this.fleet.selectedRobotId();
+    if (!id || !this.canFocusSelected()) {
+      return;
+    }
+    this.world.focusRobot(id);
   }
 
   private boot(): void {
