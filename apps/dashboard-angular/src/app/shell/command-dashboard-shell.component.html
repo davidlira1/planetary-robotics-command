@@ -1,0 +1,16 @@
+<div class="app" [inert]="inspectionOpen()">
+  <prc-command-header />
+  <main class="main">
+    <prc-fleet-assets />
+    <section class="center">
+      <prc-robot-world-host />
+      <prc-fleet-summary-metrics />
+    </section>
+    <aside class="right">
+      <prc-asset-telemetry />
+      <prc-active-alerts />
+    </aside>
+  </main>
+  <prc-operations-feed />
+</div>
+<prc-inspection-drawer />

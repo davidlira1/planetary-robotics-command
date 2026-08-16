@@ -1,0 +1,22 @@
+<section class="panel alerts">
+  <div class="head">ACTIVE ALERTS <span>{{ pad(alerts.alerts().length) }}</span></div>
+  @if (alerts.loading() && alerts.alerts().length === 0) {
+    <div class="empty">Loading alerts…</div>
+  } @else if (alerts.error()) {
+    <div class="empty">{{ alerts.error() }}</div>
+  } @else if (alerts.alerts().length === 0) {
+    <div class="empty">No open alerts.</div>
+  } @else {
+    @for (alert of alerts.alerts(); track alert.id) {
+      <button
+        type="button"
+        class="item"
+        [class.critical]="alert.severity === 'CRITICAL'"
+        (click)="onAlertClick(alert.id, alert.robotId)"
+      >
+        <b>{{ alert.robotId }} · {{ alertTypeLabel(alert.type) }}</b>
+        <div class="sub">{{ alert.message }}</div>
+      </button>
+    }
+  }
+</section>

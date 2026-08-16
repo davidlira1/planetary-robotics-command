@@ -1,0 +1,10 @@
+.feed {
+  margin-top: 14px;
+  min-height: 110px;
+}
+
+.feedrow {
+  padding: 11px 15px;
+  border-top: 1px solid rgba(35, 55, 70, 0.6);
+  color: var(--prc-text-muted);
+}

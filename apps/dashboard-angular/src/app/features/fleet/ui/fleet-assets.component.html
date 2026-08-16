@@ -1,0 +1,33 @@
+<section class="panel fleet">
+  <div class="head">FLEET ASSETS <span>{{ padCount(onlineCount()) }} ONLINE</span></div>
+  @if (fleet.loading() && fleet.robots().length === 0) {
+    <div class="empty">Loading fleet…</div>
+  } @else if (fleet.error() && fleet.robots().length === 0) {
+    <div class="empty">{{ fleet.error() }}</div>
+  } @else if (fleet.robots().length === 0) {
+    <div class="empty">No robots in fleet snapshot.</div>
+  } @else {
+    @for (robot of fleet.robots(); track robot.id) {
+      <button
+        type="button"
+        class="robot"
+        [class.selected]="fleet.selectedRobotId() === robot.id"
+        [attr.aria-label]="robotAccessibleName(robot)"
+        [attr.aria-pressed]="fleet.selectedRobotId() === robot.id"
+        (click)="fleet.selectRobot(robot.id)"
+      >
+        <div class="badge">{{ typeBadge(robot) }}</div>
+        <div>
+          <div class="name">{{ robot.id }}</div>
+          <div class="sub">{{ typeLabel(robot) }}</div>
+        </div>
+        <i
+          class="dot"
+          aria-hidden="true"
+          [class.warning]="robot.health?.status === 'WARNING'"
+          [class.critical]="robot.health?.status === 'CRITICAL'"
+        ></i>
+      </button>
+    }
+  }
+</section>

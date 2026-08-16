@@ -1,0 +1,18 @@
+{
+  "folders": [
+    {
+      "name": "prc",
+      "path": "."
+    },
+    {
+      "name": "dashboard-angular",
+      "path": "apps/dashboard-angular"
+    }
+  ],
+  "settings": {
+    "typescript.enablePromptUseWorkspaceVersion": true
+  },
+  "extensions": {
+    "recommendations": ["Angular.ng-template"]
+  }
+}

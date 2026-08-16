@@ -5,7 +5,8 @@ Enterprise-oriented planetary robotics command platform.
 - **Layer 1:** NestJS API, hexagonal domain/application, Prisma/PostgreSQL, telemetry ingest, fleet/telemetry reads
 - **Layer 2:** Transactional outbox, Azure Service Bus (local emulator), outbox publisher, health worker, derived health + transition alerts
 - **Layer 3:** Robot fleet simulator posting believable telemetry through the public HTTP API
-- **Layer 4:** Dashboard read models — `GET /fleet`, alerts list, health on robot detail (Angular/Three.js-ready)
+- **Layer 4:** Dashboard read models — `GET /fleet`, alerts list, health on robot detail
+- **Layer 5:** Angular 22 command dashboard + Three.js world (one-shot `/fleet` and `/alerts`, no polling)
 
 ## Prerequisites
 
@@ -33,7 +34,10 @@ pnpm dev:api            # Terminal 2 — http://localhost:3000/docs
 pnpm dev:outbox         # Terminal 3 — publishes outbox → Service Bus
 pnpm dev:health         # Terminal 4 — consumes health subscription
 pnpm dev:simulator      # Terminal 5 — fleet telemetry via HTTP
+pnpm dev:dashboard      # Terminal 6 — http://localhost:4200 (proxies /api and /health → :3000)
 ```
+
+Layer 5 is a one-shot snapshot: the dashboard loads `/fleet` and `/alerts` once. Refresh the browser after the simulator has produced state. There is no polling. Header status is **API CONNECTED** (initial API reachability), not whole-system health.
 
 Or one-shot setup helper: `pnpm setup` then the `dev:*` commands.
 
@@ -119,7 +123,19 @@ docker exec -it prc-postgres psql -U prc -d prc -c 'SELECT "consumerName", COUNT
 ```bash
 pnpm test:unit
 pnpm test:integration
+pnpm test:dashboard
+pnpm api:check:angular
 ```
+
+Regenerate the Angular OpenAPI client after contract changes (`Docker` image `openapitools/openapi-generator-cli:v7.24.0`):
+
+```bash
+pnpm api:generate:angular
+```
+
+## Editor
+
+Open [`prc.code-workspace`](prc.code-workspace) rather than the repo folder. The backend stays on workspace TypeScript 5.x; the Angular dashboard uses its own TypeScript 6.x. Install the recommended **Angular Language Service** (`Angular.ng-template`) so dashboard templates typecheck.
 
 ## Docs
 
@@ -129,4 +145,4 @@ pnpm test:integration
 
 ## Out of scope (so far)
 
-Angular, Three.js, WebSockets, missions, commands, auth, AI, SMS/email.
+WebSockets / realtime push, missions, commands, auth, AI, SMS/email, full mobile product design.

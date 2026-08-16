@@ -1,0 +1,13 @@
+{
+  "name": "@prc/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framework-neutral Deep Space design tokens for Planetary Robotics Command",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./tokens": {
+      "types": "./tokens.ts",
+      "default": "./tokens.ts"
+    }
+  }
+}

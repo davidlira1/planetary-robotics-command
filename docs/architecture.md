@@ -105,7 +105,7 @@ Physics uses actual monotonic `deltaTime` (clamped). Telemetry emission is a sep
 ## Layer 4 — dashboard read models
 
 ```text
-Angular + Three.js (future)
+Angular + Three.js (Layer 5)
         |
         v
 Dashboard Read API
@@ -124,6 +124,40 @@ PostgreSQL
 
 Layer 4 composes Robot + RobotCurrentState + RobotHealthState for UI bootstrapping. It does not alter telemetry ingestion, outbox, or health-worker write paths. `currentState` and `health` may be null when no data exists yet.
 
-### Future ports (not Layer 4)
+## Layer 5 — Angular command dashboard
+
+```text
+Angular UI
+    ↓
+FleetFacade / AlertsFacade / InspectionFacade
+    ↓
+Data-source interfaces
+    ↓
+HTTP adapters
+    ↓
+Generated OpenAPI Angular client
+    ↓
+PRC REST API (dev proxy 4200 → 3000)
+```
+
+Visualization:
+
+```text
+FleetFacade state
+    ↓
+RobotWorldHostComponent
+    ↓
+RobotWorld (ROBOT_WORLD token)
+    ↓
+ThreeRobotWorld
+```
+
+Layer 5 loads `GET /api/v1/fleet` once and `GET /api/v1/alerts?status=OPEN&limit=50` once. Facades expose those loads as `Observable<void>` workflows; the shell subscribes with `takeUntilDestroyed` so teardown cancels in-flight HTTP. Fleet, alerts, and inspection facades are shell-scoped. There is no polling and no WebSocket. Header connectivity is **API CONNECTED** from initial API reachability, not a whole-system health claim.
+
+`InspectionFacade` is presentation-only (`openAsset()` / `openAlert(id)` / `close()`). It owns drawer mode and selected alert id, not selected robot identity. Fleet row click selects only. 3D click selects via `FleetFacade` then `openAsset()`. Alert click selects the robot and opens alert detail. Facade state is read-only to consumers.
+
+Responsive modes: full command (≥1440px), compact command (1024–1439px), focus (<1024px: fleet + world primary; telemetry/alerts via the drawer). Desktop/laptop-first.
+
+### Future ports (not Layer 5)
 
 Realtime UI (WebSockets), identity, AI, notifications, missions/commands.

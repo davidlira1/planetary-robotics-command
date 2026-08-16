@@ -9,6 +9,8 @@ coverage/
 .turbo/
 *.tsbuildinfo
 apps/api/dist/
+apps/dashboard-angular/dist/
+apps/dashboard-angular/.angular/
 libs/**/dist/
 
 # Accidental tsc emit into source trees (should only land in dist/)

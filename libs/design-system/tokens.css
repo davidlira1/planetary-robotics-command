@@ -1,0 +1,68 @@
+/* Hex values must stay in sync with tokens.ts. */
+:root {
+  --prc-bg-canvas: #050a0f;
+  --prc-bg-surface: #0b131d;
+  --prc-bg-surface-elevated: #0e1823;
+  --prc-bg-drawer: #08111a;
+  --prc-bg-card: #0c1721;
+  --prc-bg-world: #050b11;
+  --prc-bg-world-ground: #0c151a;
+  --prc-bg-meter-track: #293a48;
+  --prc-border: #233746;
+  --prc-border-drawer: #2d6170;
+  --prc-border-selection: #287b91;
+  --prc-text-primary: #e5edf2;
+  --prc-text-muted: #748896;
+  --prc-accent-primary: #37dcff;
+  --prc-status-normal: #4be0a3;
+  --prc-status-warning: #ffd25c;
+  --prc-status-critical: #ff5269;
+  --prc-world-ring: #21839a;
+  --prc-world-light-ambient: #6f8a9a;
+  --prc-world-light-key: #b7d7e4;
+  --prc-grid-line: rgba(49, 126, 148, 0.08);
+  --prc-selection-fill: rgba(55, 220, 255, 0.06);
+  --prc-overlay: rgba(0, 4, 8, 0.62);
+
+  --prc-space-page-x: 42px;
+  --prc-space-page-y: 30px;
+  --prc-space-gap: 14px;
+  --prc-space-rail-fleet: 235px;
+  --prc-space-rail-telemetry: 300px;
+  --prc-space-rail-fleet-compact: 190px;
+  --prc-space-rail-telemetry-compact: 240px;
+  --prc-space-world-height: 570px;
+  --prc-space-metrics-height: 72px;
+
+  --prc-font-ui: Inter, system-ui, sans-serif;
+  --prc-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --prc-font-title: system-ui, Inter, sans-serif;
+
+  --prc-radius-panel: 7px;
+  --prc-radius-tile: 6px;
+  --prc-radius-control: 4px;
+
+  --prc-motion-fast: 140ms;
+  --prc-motion-standard: 220ms;
+  --prc-motion-deliberate: 280ms;
+}
+
+@media (max-width: 1439px) {
+  :root {
+    --prc-space-world-height: 520px;
+  }
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --prc-space-world-height: 480px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --prc-motion-fast: 0ms;
+    --prc-motion-standard: 0ms;
+    --prc-motion-deliberate: 0ms;
+  }
+}

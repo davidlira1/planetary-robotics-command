@@ -1,0 +1,68 @@
+.telemetry {
+  padding: 15px;
+}
+
+.selected {
+  font-size: 23px;
+  font-weight: 700;
+  margin: 5px 0;
+}
+
+.status {
+  float: right;
+  border: 1px solid var(--prc-status-normal);
+  color: var(--prc-status-normal);
+  padding: 5px 8px;
+  border-radius: 3px;
+}
+
+.kicker {
+  color: var(--prc-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+}
+
+.sub {
+  color: var(--prc-text-muted);
+  font-size: 10px;
+}
+
+.meter {
+  margin: 17px 0;
+}
+
+.meterline {
+  display: flex;
+  justify-content: space-between;
+  color: var(--prc-text-muted);
+  font-size: 11px;
+}
+
+.bar {
+  height: 4px;
+  background: var(--prc-bg-meter-track);
+  margin-top: 7px;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  background: var(--prc-accent-primary);
+}
+
+.bar i.warning,
+b.warning {
+  background: var(--prc-status-warning);
+  color: var(--prc-status-warning);
+}
+
+.bar i.critical,
+b.critical {
+  background: var(--prc-status-critical);
+  color: var(--prc-status-critical);
+}
+
+.empty {
+  margin-top: 18px;
+  color: var(--prc-text-muted);
+}

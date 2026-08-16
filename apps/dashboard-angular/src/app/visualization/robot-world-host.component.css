@@ -1,0 +1,49 @@
+.world {
+  position: relative;
+  height: var(--prc-space-world-height);
+  background: radial-gradient(circle at 52% 45%, rgba(22, 109, 127, 0.28), transparent 18%),
+    var(--prc-bg-world);
+  border: 1px solid var(--prc-border);
+  border-radius: var(--prc-radius-panel);
+  overflow: hidden;
+}
+
+.canvas-host,
+.canvas-host canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sector {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sector b {
+  display: block;
+  color: var(--prc-accent-primary);
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.kicker {
+  color: var(--prc-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+}
+
+.hint {
+  position: absolute;
+  bottom: 14px;
+  left: 18px;
+  z-index: 2;
+  color: var(--prc-text-muted);
+  font-size: 10px;
+  pointer-events: none;
+}
+

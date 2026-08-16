@@ -1,0 +1,8 @@
+<header class="top">
+  <div class="logo" aria-hidden="true"></div>
+  <div>
+    <div class="kicker">PRC // MISSION SYSTEMS</div>
+    <div class="title">PLANETARY ROBOTICS COMMAND</div>
+  </div>
+  <div class="link" [class.ok]="connected()" [class.bad]="failed()">● {{ label() }}</div>
+</header>

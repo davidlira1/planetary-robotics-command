@@ -22,6 +22,8 @@
     "**/node_modules",
     "**/dist",
     "**/*.spec.ts",
-    "**/*.e2e-spec.ts"
+    "**/*.e2e-spec.ts",
+    "apps/dashboard-angular/**",
+    "libs/api-client-angular/**"
   ]
 }

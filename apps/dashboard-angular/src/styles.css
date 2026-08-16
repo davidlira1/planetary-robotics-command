@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--prc-bg-canvas);
+  color: var(--prc-text-primary);
+  font: 13px var(--prc-font-mono);
+  letter-spacing: 0.02em;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--prc-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--prc-grid-line) 1px, transparent 1px);
+  background-size: 42px 42px;
+  z-index: 0;
+}
+
+prc-root {
+  position: relative;
+  z-index: 1;
+  display: block;
+  min-height: 100vh;
+}
+
+.panel {
+  background: linear-gradient(135deg, rgba(14, 24, 35, 0.97), rgba(8, 15, 23, 0.97));
+  border: 1px solid var(--prc-border);
+  border-radius: var(--prc-radius-panel);
+  overflow: hidden;
+}
+
+.head {
+  height: 42px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--prc-border);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.head span {
+  margin-left: auto;
+  color: var(--prc-text-muted);
+  font-weight: 400;
+}

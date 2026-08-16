@@ -1,0 +1,72 @@
+<section class="panel">
+  <div class="head">ASSET TELEMETRY <span>{{ selected()?.id ?? '—' }}</span></div>
+  <div class="telemetry">
+    @if (selected(); as robot) {
+      <span class="status">{{ operationalLabel(robot.operationalStatus) }}</span>
+      <div class="kicker">SELECTED UNIT</div>
+      <div class="selected">{{ robot.id }}</div>
+      <div class="sub">{{ typeLabel(robot) }}</div>
+      @if (robot.currentState; as current) {
+        <div class="meter">
+          <div class="meterline">
+            <span>BATTERY</span>
+            <b
+              [class.warning]="robot.health?.batteryStatus === 'WARNING'"
+              [class.critical]="robot.health?.batteryStatus === 'CRITICAL'"
+            >{{ formatNumber(current.batteryPercent, 0) }}%</b>
+          </div>
+          <div class="bar">
+            <i
+              [style.width.%]="current.batteryPercent"
+              [class.warning]="robot.health?.batteryStatus === 'WARNING'"
+              [class.critical]="robot.health?.batteryStatus === 'CRITICAL'"
+            ></i>
+          </div>
+        </div>
+        <div class="meter">
+          <div class="meterline">
+            <span>SIGNAL</span>
+            <b
+              [class.warning]="robot.health?.signalStatus === 'WARNING'"
+              [class.critical]="robot.health?.signalStatus === 'CRITICAL'"
+            >{{ formatNumber(current.signalStrengthDbm) }} dBm</b>
+          </div>
+          <div class="bar">
+            <i
+              [style.width.%]="signalBarPercent(current.signalStrengthDbm)"
+              [class.warning]="robot.health?.signalStatus === 'WARNING'"
+              [class.critical]="robot.health?.signalStatus === 'CRITICAL'"
+            ></i>
+          </div>
+        </div>
+        <div class="meter">
+          <div class="meterline">
+            <span>TEMPERATURE</span>
+            <b
+              [class.warning]="robot.health?.temperatureStatus === 'WARNING'"
+              [class.critical]="robot.health?.temperatureStatus === 'CRITICAL'"
+            >{{ formatNumber(current.temperatureCelsius) }}°C</b>
+          </div>
+          <div class="bar">
+            <i
+              [style.width.%]="temperatureBarPercent(current.temperatureCelsius)"
+              [class.warning]="robot.health?.temperatureStatus === 'WARNING'"
+              [class.critical]="robot.health?.temperatureStatus === 'CRITICAL'"
+            ></i>
+          </div>
+        </div>
+        <div class="meter">
+          <div class="meterline"><span>VELOCITY</span><b>{{ formatNumber(current.velocityMetersPerSecond) }} m/s</b></div>
+          <div class="bar"><i [style.width.%]="velocityBarPercent(current.velocityMetersPerSecond)"></i></div>
+        </div>
+        @if (!robot.health) {
+          <div class="empty">No derived health for this robot.</div>
+        }
+      } @else {
+        <div class="empty">No current telemetry for this robot.</div>
+      }
+    } @else {
+      <div class="empty">Select a robot from the fleet list.</div>
+    }
+  </div>
+</section>

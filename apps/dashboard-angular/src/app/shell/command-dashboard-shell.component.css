@@ -1,0 +1,66 @@
+.app {
+  position: relative;
+  min-height: 100vh;
+  padding: var(--prc-space-page-y) var(--prc-space-page-x);
+}
+
+.main {
+  display: grid;
+  grid-template-columns: var(--prc-space-rail-fleet) minmax(0, 1fr) var(--prc-space-rail-telemetry);
+  gap: var(--prc-space-gap);
+  margin-top: 16px;
+  align-items: stretch;
+}
+
+/*
+  Fleet rail height is owned here so it matches the world + metrics column.
+  The reference HTML used a standalone 650px/600px min-height on .fleet;
+  those were approximations of this stack.
+*/
+prc-fleet-assets {
+  min-height: calc(
+    var(--prc-space-world-height) + var(--prc-space-gap) + var(--prc-space-metrics-height)
+  );
+}
+
+.center {
+  display: grid;
+  grid-template-rows: auto var(--prc-space-metrics-height);
+  gap: var(--prc-space-gap);
+  min-width: 0;
+}
+
+.right {
+  display: grid;
+  grid-template-rows: 350px 286px;
+  gap: var(--prc-space-gap);
+  min-width: 0;
+}
+
+@media (max-width: 1439px) {
+  .main {
+    grid-template-columns: var(--prc-space-rail-fleet-compact) minmax(0, 1fr)
+      var(--prc-space-rail-telemetry-compact);
+  }
+  .app {
+    padding: 24px 28px;
+  }
+  .right {
+    grid-template-rows: 320px minmax(240px, 1fr);
+  }
+}
+
+@media (max-width: 1023px) {
+  .main {
+    grid-template-columns: var(--prc-space-rail-fleet-compact) minmax(0, 1fr);
+  }
+  prc-fleet-assets {
+    min-height: 0;
+  }
+  .right {
+    display: none;
+  }
+  .app {
+    padding: 20px;
+  }
+}

@@ -1,0 +1,79 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.fleet {
+  height: 100%;
+}
+
+.robot {
+  width: calc(100% - 20px);
+  margin: 10px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  display: grid;
+  grid-template-columns: 34px 1fr 10px;
+  gap: 9px;
+  align-items: center;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.robot:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.robot:hover,
+.robot.selected {
+  border-color: var(--prc-border-selection);
+  background: var(--prc-selection-fill);
+}
+
+.robot:focus-visible {
+  outline: none;
+  border-color: var(--prc-accent-primary);
+}
+
+.badge {
+  border: 1px solid var(--prc-border);
+  padding: 7px 4px;
+  text-align: center;
+  color: var(--prc-accent-primary);
+  border-radius: var(--prc-radius-control);
+}
+
+.name {
+  font-weight: 700;
+}
+
+.sub {
+  color: var(--prc-text-muted);
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--prc-status-normal);
+  display: block;
+}
+
+.dot.warning {
+  background: var(--prc-status-warning);
+}
+
+.dot.critical {
+  background: var(--prc-status-critical);
+}
+
+.empty {
+  padding: 18px 15px;
+  color: var(--prc-text-muted);
+}

@@ -1,0 +1,39 @@
+.top {
+  height: 62px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--prc-border);
+  gap: 15px;
+}
+
+.logo {
+  width: 29px;
+  height: 29px;
+  border: 2px solid var(--prc-accent-primary);
+  transform: rotate(45deg);
+}
+
+.kicker {
+  color: var(--prc-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+}
+
+.title {
+  font: 700 17px var(--prc-font-title);
+  letter-spacing: 0.12em;
+}
+
+.link {
+  margin-left: auto;
+  color: var(--prc-text-muted);
+  font-size: 11px;
+}
+
+.link.ok {
+  color: var(--prc-status-normal);
+}
+
+.link.bad {
+  color: var(--prc-status-critical);
+}

@@ -1,0 +1,30 @@
+<div
+  class="overlay"
+  [class.open]="open()"
+  [inert]="!open()"
+  [attr.aria-hidden]="!open()"
+  (click)="onBackdrop($event)"
+>
+  <aside
+    class="drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="inspection-title"
+    (keydown)="onDrawerKeydown($event)"
+  >
+    <button type="button" class="close" #closeButton (click)="inspection.close()">
+      ESC / CLOSE
+    </button>
+    <div class="kicker">{{ kicker() }}</div>
+    <h1 id="inspection-title">{{ title() }}</h1>
+    <div class="lead">{{ lead() }}</div>
+    <div class="drawergrid">
+      @for (card of cards(); track card.label) {
+        <div class="card">
+          <div class="kicker">{{ card.label }}</div>
+          <strong [attr.data-tone]="card.tone">{{ card.value }}</strong>
+        </div>
+      }
+    </div>
+  </aside>
+</div>

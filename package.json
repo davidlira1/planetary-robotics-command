@@ -5,12 +5,16 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "setup": "bash scripts/setup.sh",
-    "build": "pnpm --filter @prc/domain build && pnpm --filter @prc/ports build && pnpm --filter @prc/contracts build && pnpm --filter @prc/application build && pnpm --filter @prc/persistence-prisma build && pnpm --filter @prc/messaging-asb build && pnpm --filter @prc/simulation build && pnpm --filter @prc/http-telemetry-producer build && pnpm --filter @prc/api build && pnpm --filter @prc/outbox-publisher build && pnpm --filter @prc/health-worker build && pnpm --filter @prc/robot-simulator build",
+    "build": "pnpm --filter @prc/domain build && pnpm --filter @prc/ports build && pnpm --filter @prc/contracts build && pnpm --filter @prc/application build && pnpm --filter @prc/persistence-prisma build && pnpm --filter @prc/messaging-asb build && pnpm --filter @prc/simulation build && pnpm --filter @prc/http-telemetry-producer build && pnpm --filter @prc/api build && pnpm --filter @prc/outbox-publisher build && pnpm --filter @prc/health-worker build && pnpm --filter @prc/robot-simulator build && pnpm --filter @prc/dashboard-angular build",
     "dev": "pnpm --filter @prc/api start:dev",
     "dev:api": "pnpm --filter @prc/api start:dev",
     "dev:outbox": "pnpm --filter @prc/outbox-publisher start:dev",
     "dev:health": "pnpm --filter @prc/health-worker start:dev",
     "dev:simulator": "pnpm --filter @prc/robot-simulator start:dev",
+    "dev:dashboard": "pnpm --filter @prc/dashboard-angular start",
+    "test:dashboard": "pnpm --filter @prc/dashboard-angular test",
+    "api:generate:angular": "bash scripts/generate-angular-client.sh",
+    "api:check:angular": "bash scripts/check-angular-client.sh",
     "start": "pnpm --filter @prc/api start:prod",
     "test": "pnpm -r test",
     "test:unit": "pnpm --filter @prc/application test && pnpm --filter @prc/domain test && pnpm --filter @prc/simulation test && pnpm --filter @prc/http-telemetry-producer test",
@@ -28,6 +32,7 @@
     "@types/node": "^22.10.2",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
+    "@openapitools/openapi-generator-cli": "2.40.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   }

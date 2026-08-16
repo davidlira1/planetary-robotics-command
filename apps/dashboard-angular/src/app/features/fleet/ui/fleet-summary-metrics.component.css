@@ -1,0 +1,40 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.stat {
+  padding: 13px;
+  border: 1px solid var(--prc-border);
+  border-radius: var(--prc-radius-tile);
+  background: var(--prc-bg-surface);
+}
+
+.stat b {
+  display: block;
+  font-size: 21px;
+  margin-top: 5px;
+  font-weight: 400;
+}
+
+.kicker {
+  color: var(--prc-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+}
+
+.yellow {
+  color: var(--prc-status-warning);
+}
+
+small {
+  font-size: 13px;
+  color: var(--prc-text-muted);
+}
+
+@media (max-width: 1023px) {
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
