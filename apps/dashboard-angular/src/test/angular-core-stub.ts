@@ -6,7 +6,11 @@ export function Injectable(): ClassDecorator {
   return (target) => target;
 }
 
-export function Inject(): ParameterDecorator {
+export interface OnDestroy {
+  ngOnDestroy(): void;
+}
+
+export function Inject(_token?: unknown): ParameterDecorator {
   return () => undefined;
 }
 

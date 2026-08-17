@@ -8,5 +8,10 @@
     "target": "http://localhost:3000",
     "secure": false,
     "changeOrigin": false
+  },
+  "/realtime": {
+    "target": "http://localhost:3001",
+    "ws": true,
+    "secure": false
   }
 }

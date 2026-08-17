@@ -41,15 +41,8 @@ PostgreSQL Transaction
       Azure Service Bus topic
       robot.telemetry.received
               │
-              v
-      Health Subscription
-              │
-              v
-        Health Worker
-              │
-              v
-        PostgreSQL
-        Health + Alerts + ProcessedMessage
+              +---- health subscription → Health Worker → PostgreSQL health/alerts
+              +---- realtime subscription → Realtime Gateway → WebSocket (Layer 6)
 ```
 
 ### Why the API does not publish directly
@@ -152,12 +145,37 @@ RobotWorld (ROBOT_WORLD token)
 ThreeRobotWorld
 ```
 
-Layer 5 loads `GET /api/v1/fleet` once and `GET /api/v1/alerts?status=OPEN&limit=50` once. Facades expose those loads as `Observable<void>` workflows; the shell subscribes with `takeUntilDestroyed` so teardown cancels in-flight HTTP. Fleet, alerts, and inspection facades are shell-scoped. There is no polling and no WebSocket. Header connectivity is **API CONNECTED** from initial API reachability, not a whole-system health claim.
+Layer 5 loads `GET /api/v1/fleet` once and `GET /api/v1/alerts?status=OPEN&limit=50` once, then keeps robot current-state fresh over WebSocket (Layer 6). Facades expose HTTP loads as `Observable<void>` workflows; the shell subscribes with `takeUntilDestroyed`. Fleet, alerts, inspection, and realtime facades are shell-scoped. There is no polling. Header shows **API CONNECTED** (REST reachability) and **LIVE LINK** (WebSocket state) separately.
 
 `InspectionFacade` is presentation-only (`openAsset()` / `openAlert(id)` / `close()`). It owns drawer mode and selected alert id, not selected robot identity. Fleet row click selects only. 3D click selects via `FleetFacade` then `openAsset()`. Alert click selects the robot and opens alert detail. Facade state is read-only to consumers.
 
 Responsive modes: full command (≥1440px), compact command (1024–1439px), focus (<1024px: fleet + world primary; telemetry/alerts via the drawer). Desktop/laptop-first.
 
-### Future ports (not Layer 5)
+## Layer 6 — realtime fleet streaming
 
-Realtime UI (WebSockets), identity, AI, notifications, missions/commands.
+```text
+Simulator
+    ↓ POST /telemetry
+API (outbox in the same Postgres transaction)
+    ↓
+Outbox Publisher
+    ↓
+Azure Service Bus topic
+robot.telemetry.received
+    ├── health subscription → Health Worker → Postgres health/alerts
+    └── realtime subscription → Realtime Gateway
+                                    ↓ maps to robot.state.updated
+                                 WebSocket /realtime
+                                    ↓
+                         Angular FleetRealtimeDataSource
+                                    ↓
+                              FleetFacade patch
+                                    ↓
+                         existing Three.js interpolation
+```
+
+REST answers "what is true when I connect / reconnect." The socket answers "what changed after I connected." `POST /telemetry` does not talk to WebSockets. The gateway does not write Postgres.
+
+## Out of scope (later layers)
+
+Identity, AI, notifications, missions/commands, realtime alerts / health-changed events.

@@ -11,12 +11,14 @@ The command dashboard needs shared fleet selection and independent alert loading
 - `InspectionFacade` is presentation-only UI orchestration: `mode`, `selectedAlertId`, `openAsset()`, `openAlert(id)`, `close()`. It does not store selected robot identity; `FleetFacade` owns that.
 - Public facade state is `asReadonly()`. Consumers read `facade.robots()`; they cannot `facade.robots.set(...)`. Writes stay on private `WritableSignal`s and public intents.
 - `loadFleet()` / `loadAlerts()` return `Observable<void>`. All state writes stay inside the facade (`tap` / `catchError` / `finalize`). The shell subscribes with `takeUntilDestroyed(DestroyRef)` so teardown unsubscribes and cancels `HttpClient`.
-- Facades are provided on `CommandDashboardShellComponent`, not `providedIn: 'root'`. They are dashboard-session state. HTTP adapters and the generated client stay in `app.config.ts`.
+- Facades are provided on `CommandDashboardShellComponent`, not `providedIn: 'root'`. They are dashboard-session state. HTTP and WebSocket adapters stay in `app.config.ts`.
+- `RealtimeFacade` is also shell-scoped. Its `ngOnDestroy` disconnects the realtime socket; root scope would leak the connection.
+- `loadFleet()` merges REST robots with any newer stream `currentState` by `recordedAt`. `applyRobotStateUpdated` patches one robot immutably. Unknown realtime robot ids are retained only until a successful snapshot, then dropped.
 - No `IFleetStore`, no god store, no sibling component references.
 
 ## Consequences
 
-List, 3D, telemetry, alerts, and the drawer share one shell-scoped instance. Destroying the shell cancels in-flight loads and drops session state. Layer 5 has no polling.
+List, 3D, telemetry, alerts, the drawer, and the live link share one shell-scoped instance. Destroying the shell cancels in-flight loads, unsubscribes realtime, and drops session state. Layer 6 still has no polling.
 
 ## Alternatives considered
 

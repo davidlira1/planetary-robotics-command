@@ -21,7 +21,8 @@
             "styles": [
               "../../libs/design-system/tokens.css",
               "src/styles.css"
-            ]
+            ],
+            "allowedCommonJsDependencies": ["@prc/contracts", "zod"]
           },
           "configurations": {
             "production": {

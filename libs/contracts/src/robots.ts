@@ -72,6 +72,7 @@ export const ListRobotsResponseSchema = z.object({
   page: PageSchema,
 });
 
+export type CurrentState = z.infer<typeof CurrentStateSchema>;
 export type ListRobotsQuery = z.infer<typeof ListRobotsQuerySchema>;
 export type ListRobotsResponse = z.infer<typeof ListRobotsResponseSchema>;
 export type RobotDetail = z.infer<typeof RobotDetailSchema>;

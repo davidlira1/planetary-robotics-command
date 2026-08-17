@@ -10,6 +10,7 @@ import { FleetSummaryMetricsComponent } from '../features/fleet/ui/fleet-summary
 import { InspectionDrawerComponent } from '../features/inspection/ui/inspection-drawer.component';
 import { InspectionFacade } from '../features/inspection/state/inspection-facade';
 import { OperationsFeedComponent } from '../features/operations/ui/operations-feed.component';
+import { RealtimeFacade } from '../features/realtime/state/realtime-facade';
 import { RobotWorldHostComponent } from '../visualization/robot-world-host.component';
 
 @Component({
@@ -25,7 +26,7 @@ import { RobotWorldHostComponent } from '../visualization/robot-world-host.compo
     OperationsFeedComponent,
     InspectionDrawerComponent,
   ],
-  providers: [FleetFacade, AlertsFacade, InspectionFacade],
+  providers: [FleetFacade, AlertsFacade, InspectionFacade, RealtimeFacade],
   templateUrl: './command-dashboard-shell.component.html',
   styleUrl: './command-dashboard-shell.component.css',
 })
@@ -33,11 +34,13 @@ export class CommandDashboardShellComponent implements OnInit {
   private readonly fleet = inject(FleetFacade);
   private readonly alerts = inject(AlertsFacade);
   private readonly inspection = inject(InspectionFacade);
+  private readonly realtime = inject(RealtimeFacade);
   private readonly destroyRef = inject(DestroyRef);
   readonly inspectionOpen = computed(() => this.inspection.mode() !== null);
 
   ngOnInit(): void {
     this.fleet.loadFleet().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
     this.alerts.loadAlerts().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+    this.realtime.connect();
   }
 }

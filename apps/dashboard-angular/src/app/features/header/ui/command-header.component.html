@@ -4,5 +4,10 @@
     <div class="kicker">PRC // MISSION SYSTEMS</div>
     <div class="title">PLANETARY ROBOTICS COMMAND</div>
   </div>
-  <div class="link" [class.ok]="connected()" [class.bad]="failed()">● {{ label() }}</div>
+  <div class="links">
+    <div class="link" [class.ok]="connected()" [class.bad]="failed()">● {{ label() }}</div>
+    <div class="link" [class.ok]="liveOk()" [class.warn]="liveWarn()" [class.bad]="liveBad()">
+      ● {{ liveLabel() }}
+    </div>
+  </div>
 </header>

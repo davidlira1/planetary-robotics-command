@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { FleetFacade } from '../../fleet/state/fleet-facade';
+import { RealtimeFacade } from '../../realtime/state/realtime-facade';
 
 @Component({
   selector: 'prc-command-header',
@@ -9,6 +10,7 @@ import { FleetFacade } from '../../fleet/state/fleet-facade';
 })
 export class CommandHeaderComponent {
   private readonly fleet = inject(FleetFacade);
+  private readonly realtime = inject(RealtimeFacade);
 
   readonly connected = computed(() => this.fleet.loadedAt() !== null && !this.fleet.error());
   readonly failed = computed(() => this.fleet.error() !== null);
@@ -24,5 +26,24 @@ export class CommandHeaderComponent {
       return 'API UNREACHABLE';
     }
     return 'API OFFLINE';
+  });
+
+  readonly liveState = computed(() => this.realtime.connectionState());
+  readonly liveOk = computed(() => this.liveState() === 'CONNECTED');
+  readonly liveWarn = computed(
+    () => this.liveState() === 'CONNECTING' || this.liveState() === 'RECONNECTING',
+  );
+  readonly liveBad = computed(() => this.liveState() === 'DISCONNECTED');
+  readonly liveLabel = computed(() => {
+    switch (this.liveState()) {
+      case 'CONNECTING':
+        return 'LIVE LINK CONNECTING';
+      case 'CONNECTED':
+        return 'LIVE LINK CONNECTED';
+      case 'RECONNECTING':
+        return 'LIVE LINK RECONNECTING';
+      default:
+        return 'LIVE LINK DISCONNECTED';
+    }
   });
 }

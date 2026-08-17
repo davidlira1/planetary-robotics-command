@@ -6,7 +6,8 @@ Enterprise-oriented planetary robotics command platform.
 - **Layer 2:** Transactional outbox, Azure Service Bus (local emulator), outbox publisher, health worker, derived health + transition alerts
 - **Layer 3:** Robot fleet simulator posting believable telemetry through the public HTTP API
 - **Layer 4:** Dashboard read models — `GET /fleet`, alerts list, health on robot detail
-- **Layer 5:** Angular 22 command dashboard + Three.js world (one-shot `/fleet` and `/alerts`, no polling)
+- **Layer 5:** Angular 22 command dashboard + Three.js world
+- **Layer 6:** Realtime fleet current-state over WebSocket (`apps/realtime-gateway`, Service Bus `realtime` subscription)
 
 ## Prerequisites
 
@@ -26,18 +27,21 @@ pnpm seed
 pnpm build
 ```
 
-Start processes (five terminals for full pipeline + simulator):
+Start processes (seven terminals for full pipeline + simulator + live dashboard):
 
 ```bash
 pnpm docker:up          # Terminal 1 (if not already running)
 pnpm dev:api            # Terminal 2 — http://localhost:3000/docs
 pnpm dev:outbox         # Terminal 3 — publishes outbox → Service Bus
 pnpm dev:health         # Terminal 4 — consumes health subscription
-pnpm dev:simulator      # Terminal 5 — fleet telemetry via HTTP
-pnpm dev:dashboard      # Terminal 6 — http://localhost:4200 (proxies /api and /health → :3000)
+pnpm dev:realtime       # Terminal 5 — WebSocket gateway :3001/realtime
+pnpm dev:simulator      # Terminal 6 — fleet telemetry via HTTP
+pnpm dev:dashboard      # Terminal 7 — http://localhost:4200 (proxies /api, /health → :3000 and /realtime WS → :3001)
 ```
 
-Layer 5 is a one-shot snapshot: the dashboard loads `/fleet` and `/alerts` once. Refresh the browser after the simulator has produced state. There is no polling. Header status is **API CONNECTED** (initial API reachability), not whole-system health.
+After editing `infrastructure/docker/servicebus/Config.json`, recreate the Service Bus emulator container so the `realtime` subscription exists (`pnpm docker:down && pnpm docker:up`).
+
+The dashboard loads `/fleet` and `/alerts` once, then applies `robot.state.updated` over the live link. Header **API CONNECTED** is REST reachability; **LIVE LINK** is the WebSocket. There is no polling. Reconnect re-fetches `/fleet` and merges by `recordedAt`.
 
 Or one-shot setup helper: `pnpm setup` then the `dev:*` commands.
 
@@ -114,9 +118,10 @@ docker exec -it prc-postgres psql -U prc -d prc -c 'SELECT "consumerName", COUNT
 
 - Emulator AMQP: `localhost:5672`
 - Management HTTP: `localhost:5300`
-- Topic: `robot.telemetry.received` / subscription: `health`
+- Topic: `robot.telemetry.received` / subscriptions: `health`, `realtime`
+- Realtime gateway: `http://localhost:3001/realtime` (dashboard proxies `/realtime`)
 - Connection string uses `UseDevelopmentEmulator=true` (see `.env.example`)
-- Permanent consumer failures dead-letter the message; inspect via emulator tooling / Azure SDK DLQ receiver against the health subscription DLQ
+- Permanent consumer failures dead-letter the message; inspect via emulator tooling / Azure SDK DLQ receiver against the health or realtime subscription DLQ
 
 ## Tests
 
@@ -142,7 +147,8 @@ Open [`prc.code-workspace`](prc.code-workspace) rather than the repo folder. The
 - [docs/architecture.md](docs/architecture.md)
 - [docs/adr](docs/adr)
 - [specs/events](specs/events)
+- [specs/realtime](specs/realtime)
 
 ## Out of scope (so far)
 
-WebSockets / realtime push, missions, commands, auth, AI, SMS/email, full mobile product design.
+Missions, commands, auth, AI, SMS/email, realtime alerts, full mobile product design.

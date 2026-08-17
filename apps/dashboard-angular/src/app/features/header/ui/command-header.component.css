@@ -25,13 +25,24 @@
 }
 
 .link {
-  margin-left: auto;
   color: var(--prc-text-muted);
   font-size: 11px;
 }
 
+.links {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
 .link.ok {
   color: var(--prc-status-normal);
+}
+
+.link.warn {
+  color: var(--prc-status-warning);
 }
 
 .link.bad {

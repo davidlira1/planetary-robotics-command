@@ -24,6 +24,8 @@ See `event-envelope.v1.schema.json`.
 |---|---|---|
 | `robot.telemetry.received` | 1 | `robot-telemetry-received.v1.schema.json` |
 
+Browser WebSocket messages are a separate public contract under [`specs/realtime`](../realtime/README.md).
+
 ## Portability
 
 Producers and consumers in NestJS, .NET, or Python should implement these JSON contracts without depending on TypeScript types as the sole source of truth.

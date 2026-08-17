@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planetary-robotics-command.local/schemas/robot-state-updated.v1.schema.json",
+  "title": "RobotStateUpdatedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "version", "eventId", "occurredAt", "robot"],
+  "properties": {
+    "type": { "type": "string", "const": "robot.state.updated" },
+    "version": { "type": "integer", "const": 1 },
+    "eventId": { "type": "string", "minLength": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "robot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "currentState"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "currentState": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "position",
+            "batteryPercent",
+            "temperatureCelsius",
+            "signalStrengthDbm",
+            "velocityMetersPerSecond",
+            "headingDegrees",
+            "recordedAt",
+            "receivedAt"
+          ],
+          "properties": {
+            "position": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y", "z"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "z": { "type": "number" }
+              }
+            },
+            "batteryPercent": { "type": "number" },
+            "temperatureCelsius": { "type": "number" },
+            "signalStrengthDbm": { "type": "number" },
+            "velocityMetersPerSecond": { "type": "number" },
+            "headingDegrees": { "type": "number" },
+            "recordedAt": { "type": "string", "format": "date-time" },
+            "receivedAt": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    }
+  }
+}
