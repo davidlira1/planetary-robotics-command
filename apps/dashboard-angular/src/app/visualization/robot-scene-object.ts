@@ -1,12 +1,11 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { predictedPosition } from './dead-reckoning';
-import { HEADING_SMOOTHING, POSITION_SMOOTHING, exponentialSmoothingAlpha } from './exponential-smoothing';
-import { lerpHeadingDegrees } from './heading';
+import { INTERPOLATION_DELAY_MS, InterpolationBuffer, type InterpolatedPose } from './interpolation-buffer';
 import { createRobotVisual } from './robot-models/create-robot-visual';
 import type { RobotVisual } from './robot-models/robot-visual';
 import { robotWorldTheme } from './robot-world-theme';
 import type { RobotWorldRobot } from './robot-world';
+import { robotIdFromDataset, type LabelInteract } from './world-pointer-interaction';
 
 const LABEL_HEIGHT = 11.5;
 const LOCATOR_HEIGHT = 11;
@@ -16,9 +15,8 @@ const HOVER_RATE = 1.6;
 export class RobotSceneObject {
   readonly group: THREE.Group;
   readonly authoritativePosition = new THREE.Vector3();
-  readonly targetPosition = this.authoritativePosition;
-  readonly predictedTargetPosition = new THREE.Vector3();
   readonly renderedPosition = new THREE.Vector3();
+  private readonly motion = new InterpolationBuffer();
 
   private readonly visualRoot: THREE.Group;
   private readonly visual: RobotVisual;
@@ -31,13 +29,26 @@ export class RobotSceneObject {
   private readonly type: RobotWorldRobot['type'];
 
   private velocityMetersPerSecond = 0;
-  private headingDegrees = 0;
   private renderedHeadingDegrees = 0;
-  private lastTelemetryReceivedAt = 0;
   private selected = false;
+  private hovered = false;
   private pulseTime = 0;
   private hoverTime = 0;
   private healthStatus: RobotWorldRobot['healthStatus'] = null;
+  private labelHandler: ((event: LabelInteract) => void) | null = null;
+  private readonly onLabelPointerEnter = () => {
+    this.labelHandler?.({ type: 'enter', robotId: this.labelRobotId() });
+  };
+  private readonly onLabelPointerLeave = () => {
+    this.labelHandler?.({ type: 'leave', robotId: this.labelRobotId() });
+  };
+  private readonly onLabelClick = (event: Event) => {
+    this.labelHandler?.({
+      type: 'click',
+      robotId: this.labelRobotId(),
+      event,
+    });
+  };
 
   constructor(robot: RobotWorldRobot) {
     this.type = robot.type;
@@ -72,7 +83,13 @@ export class RobotSceneObject {
     this.locator.position.y = LOCATOR_HEIGHT / 2;
 
     this.labelElement = createLabelElement();
+    this.labelElement.dataset['robotId'] = robot.id;
+    this.labelElement.classList.add('prc-robot-label--interactive');
+    this.labelElement.addEventListener('pointerenter', this.onLabelPointerEnter);
+    this.labelElement.addEventListener('pointerleave', this.onLabelPointerLeave);
+    this.labelElement.addEventListener('click', this.onLabelClick);
     this.label = new CSS2DObject(this.labelElement);
+    this.label.userData['robotId'] = robot.id;
     this.label.position.set(0, LABEL_HEIGHT, 0);
 
     this.group.add(this.visualRoot, this.ring, this.locator, this.label);
@@ -82,57 +99,41 @@ export class RobotSceneObject {
   applyRobot(robot: RobotWorldRobot, snap = false): void {
     if (robot.position) {
       this.authoritativePosition.set(robot.position.x, robot.position.y, robot.position.z);
-      if (snap) {
-        this.predictedTargetPosition.copy(this.authoritativePosition);
-        this.renderedPosition.copy(this.authoritativePosition);
-        this.group.position.copy(this.renderedPosition);
-        this.renderedHeadingDegrees = robot.headingDegrees;
-        this.visualRoot.rotation.y = THREE.MathUtils.degToRad(this.renderedHeadingDegrees);
+      const recordedAtMs = Date.parse(robot.recordedAt);
+      if (Number.isFinite(recordedAtMs)) {
+        const firstSample = this.motion.size === 0;
+        this.motion.push({
+          recordedAtMs,
+          position: robot.position,
+          headingDegrees: robot.headingDegrees,
+          velocityMetersPerSecond: robot.velocityMetersPerSecond,
+        });
+        if (snap || firstSample) {
+          this.applyRenderedPose({
+            position: robot.position,
+            headingDegrees: robot.headingDegrees,
+            velocityMetersPerSecond: robot.velocityMetersPerSecond,
+          });
+        }
       }
     }
-    this.velocityMetersPerSecond = robot.velocityMetersPerSecond;
-    this.headingDegrees = robot.headingDegrees;
     this.healthStatus = robot.healthStatus;
-    this.lastTelemetryReceivedAt = performance.now();
     this.updateLabel(robot);
-    this.visual.updateVisualState({ healthStatus: robot.healthStatus, selected: this.selected });
+    this.syncVisualState();
   }
 
   setSelected(selected: boolean): void {
     this.selected = selected;
     this.labelElement.classList.toggle('prc-robot-label--selected', selected);
-    if (!selected) {
-      this.ringMaterial.opacity = 0;
-      this.locatorMaterial.opacity = 0;
-    }
-    this.visual.updateVisualState({ healthStatus: this.healthStatus, selected });
+    this.syncAccent();
+    this.syncVisualState();
   }
 
   tick(deltaSeconds: number): void {
-    const elapsedSeconds = (performance.now() - this.lastTelemetryReceivedAt) / 1000;
-    const predicted = predictedPosition(
-      {
-        x: this.authoritativePosition.x,
-        y: this.authoritativePosition.y,
-        z: this.authoritativePosition.z,
-      },
-      this.velocityMetersPerSecond,
-      this.headingDegrees,
-      elapsedSeconds,
-    );
-    this.predictedTargetPosition.set(predicted.x, predicted.y, predicted.z);
-
-    const positionAlpha = exponentialSmoothingAlpha(POSITION_SMOOTHING, deltaSeconds);
-    this.renderedPosition.lerp(this.predictedTargetPosition, positionAlpha);
-    this.group.position.copy(this.renderedPosition);
-
-    const headingAlpha = exponentialSmoothingAlpha(HEADING_SMOOTHING, deltaSeconds);
-    this.renderedHeadingDegrees = lerpHeadingDegrees(
-      this.renderedHeadingDegrees,
-      this.headingDegrees,
-      headingAlpha,
-    );
-    this.visualRoot.rotation.y = THREE.MathUtils.degToRad(this.renderedHeadingDegrees);
+    const pose = this.motion.poseAt(Date.now() - INTERPOLATION_DELAY_MS);
+    if (pose) {
+      this.applyRenderedPose(pose);
+    }
 
     this.hoverTime += deltaSeconds;
     this.visualRoot.position.y =
@@ -142,19 +143,33 @@ export class RobotSceneObject {
 
     if (this.selected) {
       this.pulseTime += deltaSeconds;
-      const pulse = 0.5 + 0.5 * Math.sin(this.pulseTime * 3.1);
-      this.ringMaterial.opacity = 0.5 + 0.4 * pulse;
-      this.locatorMaterial.opacity = 0.22 + 0.18 * pulse;
     }
+    this.syncAccent();
   }
 
   dispose(): void {
+    this.labelHandler = null;
+    this.labelElement.removeEventListener('pointerenter', this.onLabelPointerEnter);
+    this.labelElement.removeEventListener('pointerleave', this.onLabelPointerLeave);
+    this.labelElement.removeEventListener('click', this.onLabelClick);
     this.visual.dispose();
     this.ring.geometry.dispose();
     this.locator.geometry.dispose();
     this.ringMaterial.dispose();
     this.locatorMaterial.dispose();
     this.labelElement.remove();
+  }
+
+  private labelRobotId(): string {
+    return robotIdFromDataset(this.labelElement) ?? this.group.name;
+  }
+
+  private applyRenderedPose(pose: InterpolatedPose): void {
+    this.renderedPosition.set(pose.position.x, pose.position.y, pose.position.z);
+    this.group.position.copy(this.renderedPosition);
+    this.renderedHeadingDegrees = pose.headingDegrees;
+    this.visualRoot.rotation.y = THREE.MathUtils.degToRad(this.renderedHeadingDegrees);
+    this.velocityMetersPerSecond = pose.velocityMetersPerSecond;
   }
 
   private updateLabel(robot: RobotWorldRobot): void {
@@ -171,6 +186,42 @@ export class RobotSceneObject {
       pip.className = `prc-robot-label__pip prc-robot-label__pip--${healthPipClass(robot.healthStatus)}`;
     }
     this.labelElement.dataset['health'] = robot.healthStatus ?? '';
+    this.labelElement.dataset['robotId'] = robot.id;
+  }
+
+  setLabelHandler(handler: ((event: LabelInteract) => void) | null): void {
+    this.labelHandler = handler;
+  }
+
+  setHovered(hovered: boolean): void {
+    this.hovered = hovered;
+    this.labelElement.classList.toggle('prc-robot-label--hovered', hovered);
+    this.syncAccent();
+    this.syncVisualState();
+  }
+
+  private syncVisualState(): void {
+    this.visual.updateVisualState({
+      healthStatus: this.healthStatus,
+      selected: this.selected,
+      hovered: this.hovered,
+    });
+  }
+
+  private syncAccent(): void {
+    if (this.selected) {
+      const pulse = 0.5 + 0.5 * Math.sin(this.pulseTime * 3.1);
+      this.ringMaterial.opacity = 0.5 + 0.4 * pulse;
+      this.locatorMaterial.opacity = 0.22 + 0.18 * pulse;
+      return;
+    }
+    if (this.hovered) {
+      this.ringMaterial.opacity = 0.28;
+      this.locatorMaterial.opacity = 0.14;
+      return;
+    }
+    this.ringMaterial.opacity = 0;
+    this.locatorMaterial.opacity = 0;
   }
 }
 
@@ -204,9 +255,15 @@ function createLabelElement(): HTMLDivElement {
   };
   return {
     className: 'prc-robot-label',
-    classList: { toggle: () => undefined },
+    classList: { add: () => undefined, toggle: () => undefined },
     innerHTML: '',
     dataset: {},
+    addEventListener() {
+      /* no-op */
+    },
+    removeEventListener() {
+      /* no-op */
+    },
     querySelector(selector: string) {
       return parts[selector] ?? null;
     },

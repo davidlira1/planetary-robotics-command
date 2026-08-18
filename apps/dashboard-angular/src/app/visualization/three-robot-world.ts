@@ -12,6 +12,12 @@ import {
   normalizeDirection,
 } from './camera-fit';
 import { findAncestorRobotId } from './find-ancestor-robot-id';
+import {
+  dispatchLabelSelection,
+  hoverIdChanged,
+  isPointerDrag,
+  type LabelInteract,
+} from './world-pointer-interaction';
 import { boundingSphereRadius, calculateFleetBounds, calculatePositionBounds, type FleetBounds, type Vec3 } from './fleet-bounds';
 import { InitialFitGate } from './initial-fit-gate';
 import { applyRendererSize } from './renderer-size';
@@ -26,6 +32,9 @@ const MIN_DISTANCE = 20;
 const MIN_TERRAIN_SIZE = 240;
 const TERRAIN_PADDING = 2.4;
 const DEFAULT_MAX_DISTANCE = 320;
+const HEMI_INTENSITY = 0.55;
+const KEY_INTENSITY = 1.15;
+const RIM_INTENSITY = 0.38;
 
 export class ThreeRobotWorld implements RobotWorld {
   private renderer: THREE.WebGLRenderer | null = null;
@@ -38,7 +47,10 @@ export class ThreeRobotWorld implements RobotWorld {
   private ground: THREE.Mesh | null = null;
   private decorations: { group: THREE.Group; dispose: () => void } | null = null;
   private readonly pointer = new THREE.Vector2();
+  private readonly pickList: THREE.Object3D[] = [];
   private readonly robots = new Map<string, RobotSceneObject>();
+  private hoveredRobotId: string | null = null;
+  private pointerDown: { x: number; y: number } | null = null;
   private readonly fitGate = new InitialFitGate();
   private readonly cameraController = new RobotWorldCameraController();
   private selectedId: string | null = null;
@@ -52,6 +64,11 @@ export class ThreeRobotWorld implements RobotWorld {
   private frame = 0;
   private onRobotSelected: ((id: string) => void) | null = null;
   private readonly onClick = (event: MouseEvent) => this.handleClick(event);
+  private readonly onPointerMove = (event: PointerEvent) => this.handlePointerMove(event);
+  private readonly onPointerDown = (event: PointerEvent) => {
+    this.pointerDown = { x: event.clientX, y: event.clientY };
+  };
+  private readonly onPointerLeave = () => this.setHoveredRobotId(null);
 
   initialize(host: HTMLElement, hooks: { onRobotSelected(id: string): void }): void {
     const pending = this.pendingRobots;
@@ -91,12 +108,12 @@ export class ThreeRobotWorld implements RobotWorld {
     controls.maxDistance = DEFAULT_MAX_DISTANCE;
     controls.target.set(0, 0, 0);
 
-    const hemi = new THREE.HemisphereLight(robotWorldTheme.lightAmbient, robotWorldTheme.graphiteDark, 0.42);
+    const hemi = new THREE.HemisphereLight(robotWorldTheme.lightAmbient, robotWorldTheme.graphiteDark, HEMI_INTENSITY);
     scene.add(hemi);
-    const key = new THREE.DirectionalLight(robotWorldTheme.lightKey, 0.9);
+    const key = new THREE.DirectionalLight(robotWorldTheme.lightKey, KEY_INTENSITY);
     key.position.set(40, 80, 20);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(robotWorldTheme.accent, 0.22);
+    const rim = new THREE.DirectionalLight(robotWorldTheme.accent, RIM_INTENSITY);
     rim.position.set(-50, 30, -40);
     scene.add(rim);
 
@@ -125,6 +142,9 @@ export class ThreeRobotWorld implements RobotWorld {
     this.decorations = decorations;
     this.raycaster = new THREE.Raycaster();
     renderer.domElement.addEventListener('click', this.onClick);
+    renderer.domElement.addEventListener('pointermove', this.onPointerMove);
+    renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
+    renderer.domElement.addEventListener('pointerleave', this.onPointerLeave);
     if (this.pendingRobots) {
       this.syncFleet(this.pendingRobots);
     }
@@ -145,6 +165,8 @@ export class ThreeRobotWorld implements RobotWorld {
       (id) => {
         const object = new RobotSceneObject(byId.get(id)!);
         object.setSelected(id === this.selectedId);
+        object.setHovered(id === this.hoveredRobotId);
+        object.setLabelHandler((event) => this.handleLabelInteract(event));
         this.scene!.add(object.group);
         return object;
       },
@@ -157,6 +179,10 @@ export class ThreeRobotWorld implements RobotWorld {
         object.dispose();
       },
     );
+    this.rebuildPickList();
+    if (this.hoveredRobotId && !this.robots.has(this.hoveredRobotId)) {
+      this.setHoveredRobotId(null);
+    }
     const bounds = calculateFleetBounds(this.lastPositionedRobots);
     this.syncTerrain(bounds);
     if (bounds && this.fitGate.shouldFit(true)) {
@@ -233,6 +259,15 @@ export class ThreeRobotWorld implements RobotWorld {
       this.frame = 0;
     }
     this.renderer?.domElement.removeEventListener('click', this.onClick);
+    this.renderer?.domElement.removeEventListener('pointermove', this.onPointerMove);
+    this.renderer?.domElement.removeEventListener('pointerdown', this.onPointerDown);
+    this.renderer?.domElement.removeEventListener('pointerleave', this.onPointerLeave);
+    if (this.renderer) {
+      this.renderer.domElement.style.cursor = '';
+    }
+    this.setHoveredRobotId(null);
+    this.pointerDown = null;
+    this.pickList.length = 0;
     for (const object of this.robots.values()) {
       this.scene?.remove(object.group);
       object.dispose();
@@ -374,18 +409,67 @@ export class ThreeRobotWorld implements RobotWorld {
   };
 
   private handleClick(event: MouseEvent): void {
-    if (!this.renderer || !this.camera || !this.raycaster) {
+    if (this.pointerDown && isPointerDrag(this.pointerDown, { x: event.clientX, y: event.clientY })) {
       return;
+    }
+    const robotId = this.pickRobotId(event);
+    if (robotId) {
+      this.onRobotSelected?.(robotId);
+    }
+  }
+
+  private handlePointerMove(event: PointerEvent): void {
+    this.setHoveredRobotId(this.pickRobotId(event));
+  }
+
+  private handleLabelInteract(event: LabelInteract): void {
+    if (event.type === 'enter') {
+      this.setHoveredRobotId(event.robotId);
+      return;
+    }
+    if (event.type === 'leave') {
+      if (this.hoveredRobotId === event.robotId) {
+        this.setHoveredRobotId(null);
+      }
+      return;
+    }
+    if (event.type === 'click') {
+      dispatchLabelSelection(event.event, event.robotId, (id) => this.onRobotSelected?.(id));
+    }
+  }
+
+  private setHoveredRobotId(robotId: string | null): void {
+    if (!hoverIdChanged(this.hoveredRobotId, robotId)) {
+      return;
+    }
+    if (this.hoveredRobotId) {
+      this.robots.get(this.hoveredRobotId)?.setHovered(false);
+    }
+    this.hoveredRobotId = robotId;
+    if (robotId) {
+      this.robots.get(robotId)?.setHovered(true);
+    }
+    if (this.renderer) {
+      this.renderer.domElement.style.cursor = robotId ? 'pointer' : '';
+    }
+  }
+
+  private pickRobotId(event: { clientX: number; clientY: number }): string | null {
+    if (!this.renderer || !this.camera || !this.raycaster) {
+      return null;
     }
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const meshes = [...this.robots.values()].map((object) => object.group);
-    const hits = this.raycaster.intersectObjects(meshes, true);
-    const robotId = findAncestorRobotId(hits[0]?.object);
-    if (robotId) {
-      this.onRobotSelected?.(robotId);
+    const hits = this.raycaster.intersectObjects(this.pickList, true);
+    return findAncestorRobotId(hits[0]?.object);
+  }
+
+  private rebuildPickList(): void {
+    this.pickList.length = 0;
+    for (const object of this.robots.values()) {
+      this.pickList.push(object.group);
     }
   }
 }

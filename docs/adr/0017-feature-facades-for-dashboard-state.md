@@ -8,7 +8,7 @@ The command dashboard needs shared fleet selection and independent alert loading
 
 - `FleetFacade` owns robots, selection, loading/error, and `loadedAt`. `selectedRobot` is computed. Unknown ids are ignored.
 - `AlertsFacade` owns open alerts (`status=OPEN`, `limit=50`). Failure does not block fleet/world.
-- `InspectionFacade` is presentation-only UI orchestration: `mode`, `selectedAlertId`, `openAsset()`, `openAlert(id)`, `close()`. It does not store selected robot identity; `FleetFacade` owns that.
+- `InspectionFacade` is presentation-only UI orchestration: `mode`, `selectedAlertId`, `openAsset()`, `toggleAsset()`, `openAlert(id)`, `close()`. It does not store selected robot identity; `FleetFacade` owns that.
 - Public facade state is `asReadonly()`. Consumers read `facade.robots()`; they cannot `facade.robots.set(...)`. Writes stay on private `WritableSignal`s and public intents.
 - `loadFleet()` / `loadAlerts()` return `Observable<void>`. All state writes stay inside the facade (`tap` / `catchError` / `finalize`). The shell subscribes with `takeUntilDestroyed(DestroyRef)` so teardown unsubscribes and cancels `HttpClient`.
 - Facades are provided on `CommandDashboardShellComponent`, not `providedIn: 'root'`. They are dashboard-session state. HTTP and WebSocket adapters stay in `app.config.ts`.

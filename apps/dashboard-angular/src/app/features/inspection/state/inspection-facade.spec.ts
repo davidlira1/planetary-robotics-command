@@ -27,6 +27,23 @@ describe('InspectionFacade', () => {
     expect(facade.selectedAlertId()).toBe('a1');
   });
 
+  it('toggles asset mode on and off without storing a robot id', () => {
+    const facade = new InspectionFacade();
+    facade.toggleAsset();
+    expect(facade.mode()).toBe('asset');
+    expect(facade.selectedAlertId()).toBeNull();
+    facade.toggleAsset();
+    expect(facade.mode()).toBeNull();
+  });
+
+  it('replaces an open alert drawer when toggling asset', () => {
+    const facade = new InspectionFacade();
+    facade.openAlert('a1');
+    facade.toggleAsset();
+    expect(facade.mode()).toBe('asset');
+    expect(facade.selectedAlertId()).toBeNull();
+  });
+
   it('closes and clears mode and selected alert', () => {
     const facade = new InspectionFacade();
     facade.openAlert('a1');

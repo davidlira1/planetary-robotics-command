@@ -1,33 +1,78 @@
 import { InspectionFacade } from '../features/inspection/state/inspection-facade';
-import { focusSelectedRobot, inspectWorldRobot } from './inspect-world-robot';
+import { focusSelectedRobot, handleWorldRobotClick } from './inspect-world-robot';
 
-describe('inspectWorldRobot', () => {
-  it('selects, focuses the camera, and opens the inspector', () => {
-    const selectRobot = jest.fn();
-    const focusRobot = jest.fn();
-    const openAsset = jest.fn();
-    inspectWorldRobot('D-04', { selectRobot, focusRobot, openAsset });
-    expect(selectRobot).toHaveBeenCalledWith('D-04');
+function clickWorld(
+  robotId: string,
+  selectedRobotId: string | null,
+  inspection: InspectionFacade,
+  focusRobot = jest.fn(),
+) {
+  let selectedId = selectedRobotId;
+  handleWorldRobotClick(robotId, {
+    selectedRobotId,
+    selectRobot: (id) => {
+      selectedId = id;
+    },
+    focusRobot,
+    closeInspection: () => inspection.close(),
+    toggleAsset: () => inspection.toggleAsset(),
+  });
+  return { selectedId, focusRobot };
+}
+
+describe('handleWorldRobotClick', () => {
+  it('selects and focuses an unselected robot without opening the drawer', () => {
+    const inspection = new InspectionFacade();
+    const { selectedId, focusRobot } = clickWorld('D-04', null, inspection);
+    expect(selectedId).toBe('D-04');
     expect(focusRobot).toHaveBeenCalledWith('D-04');
-    expect(openAsset).toHaveBeenCalledTimes(1);
-    expect(selectRobot.mock.invocationCallOrder[0]).toBeLessThan(focusRobot.mock.invocationCallOrder[0]!);
-    expect(focusRobot.mock.invocationCallOrder[0]).toBeLessThan(openAsset.mock.invocationCallOrder[0]!);
+    expect(inspection.mode()).toBeNull();
+  });
+
+  it('opens the drawer on a second click of the same robot without refocusing', () => {
+    const inspection = new InspectionFacade();
+    const focusRobot = jest.fn();
+    clickWorld('D-04', 'D-04', inspection, focusRobot);
+    expect(inspection.mode()).toBe('asset');
+    expect(focusRobot).not.toHaveBeenCalled();
+  });
+
+  it('closes the drawer on a third click of the same robot and keeps selection', () => {
+    const inspection = new InspectionFacade();
+    inspection.openAsset();
+    const { selectedId, focusRobot } = clickWorld('D-04', 'D-04', inspection);
+    expect(inspection.mode()).toBeNull();
+    expect(selectedId).toBe('D-04');
+    expect(focusRobot).not.toHaveBeenCalled();
+  });
+
+  it('switches robots, closes the drawer, and does not open the new drawer', () => {
+    const inspection = new InspectionFacade();
+    inspection.openAsset();
+    const { selectedId, focusRobot } = clickWorld('H-17', 'D-04', inspection);
+    expect(selectedId).toBe('H-17');
+    expect(focusRobot).toHaveBeenCalledWith('H-17');
+    expect(inspection.mode()).toBeNull();
   });
 
   it('does not clear fleet selection when the inspector closes', () => {
-    let selectedId: string | null = null;
     const inspection = new InspectionFacade();
-    inspectWorldRobot('D-04', {
-      selectRobot: (id) => {
-        selectedId = id;
-      },
-      focusRobot: jest.fn(),
-      openAsset: () => inspection.openAsset(),
-    });
+    const { selectedId } = clickWorld('D-04', 'D-04', inspection);
     expect(inspection.mode()).toBe('asset');
     inspection.close();
     expect(inspection.mode()).toBeNull();
     expect(selectedId).toBe('D-04');
+  });
+
+  it('uses the same state machine for model and label clicks', () => {
+    const inspection = new InspectionFacade();
+    const focusRobot = jest.fn();
+    const model = clickWorld('D-04', null, inspection, focusRobot);
+    const label = clickWorld('D-04', null, inspection, focusRobot);
+    expect(model.selectedId).toBe(label.selectedId);
+    expect(focusRobot).toHaveBeenCalledTimes(2);
+    expect(focusRobot.mock.calls).toEqual([['D-04'], ['D-04']]);
+    expect(inspection.mode()).toBeNull();
   });
 });
 

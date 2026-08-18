@@ -1,14 +1,20 @@
-export function inspectWorldRobot(
-  robotId: string,
+export function handleWorldRobotClick(
+  clickedRobotId: string,
   deps: {
+    selectedRobotId: string | null;
     selectRobot(id: string): void;
     focusRobot(id: string): void;
-    openAsset(): void;
+    closeInspection(): void;
+    toggleAsset(): void;
   },
 ): void {
-  deps.selectRobot(robotId);
-  deps.focusRobot(robotId);
-  deps.openAsset();
+  if (clickedRobotId !== deps.selectedRobotId) {
+    deps.selectRobot(clickedRobotId);
+    deps.closeInspection();
+    deps.focusRobot(clickedRobotId);
+    return;
+  }
+  deps.toggleAsset();
 }
 
 export function focusSelectedRobot(

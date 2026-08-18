@@ -6,6 +6,7 @@ function robot(id: string, position: RobotWorldRobot['position']): RobotWorldRob
     id,
     type: 'DRONE',
     position,
+    recordedAt: '2026-08-15T00:00:00.000Z',
     headingDegrees: 0,
     velocityMetersPerSecond: 0,
     healthStatus: null,

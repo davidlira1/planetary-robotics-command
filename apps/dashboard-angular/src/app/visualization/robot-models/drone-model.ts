@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { robotWorldTheme } from '../robot-world-theme';
 import {
   applyHealthToBeacon,
+  applyHoverHighlight,
   applySelectionEmissive,
   createAccentMaterial,
   createBeaconMaterial,
   createBodyMaterial,
+  createDarkMetalMaterial,
   mesh,
 } from './materials';
 import { ResourceBag } from './resources';
@@ -14,7 +15,7 @@ import type { RobotVisual, RobotVisualState, RobotVisualTelemetry } from './robo
 export function createDroneVisual(): RobotVisual {
   const resources = new ResourceBag();
   const bodyMat = createBodyMaterial(resources);
-  const darkMat = createBodyMaterial(resources, robotWorldTheme.graphiteDark);
+  const darkMat = createDarkMetalMaterial(resources);
   const accentMat = createAccentMaterial(resources);
   const beaconMat = createBeaconMaterial(resources);
   const group = new THREE.Group();
@@ -64,6 +65,7 @@ export function createDroneVisual(): RobotVisual {
       healthStatus = state.healthStatus;
       applyHealthToBeacon(beaconMat, state.healthStatus);
       applySelectionEmissive(accentMat, state.selected);
+      applyHoverHighlight(bodyMat, state.hovered, state.selected);
     },
     tick(deltaSeconds, telemetry: RobotVisualTelemetry) {
       const speed = telemetry.velocityMetersPerSecond > 0.3 ? 18 : 10;
@@ -74,7 +76,7 @@ export function createDroneVisual(): RobotVisual {
       if (healthStatus === 'CRITICAL') {
         beaconMat.emissiveIntensity = 0.55 + 0.55 * (0.5 + 0.5 * Math.sin(pulse * 7));
       } else {
-        beaconMat.emissiveIntensity = 0.45;
+        beaconMat.emissiveIntensity = 0.5;
       }
     },
     dispose: () => resources.dispose(),

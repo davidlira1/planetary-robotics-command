@@ -13,7 +13,7 @@ import { InspectionFacade } from '../features/inspection/state/inspection-facade
 import { mapFleetToWorldRobots } from './map-fleet-to-world';
 import { provideRobotWorld } from './provide-robot-world';
 import { ROBOT_WORLD } from './robot-world.token';
-import { focusSelectedRobot, inspectWorldRobot } from './inspect-world-robot';
+import { focusSelectedRobot, handleWorldRobotClick } from './inspect-world-robot';
 
 @Component({
   selector: 'prc-robot-world-host',
@@ -68,10 +68,12 @@ export class RobotWorldHostComponent implements OnDestroy {
     const host = this.host().nativeElement;
     this.world.initialize(host, {
       onRobotSelected: (id) =>
-        inspectWorldRobot(id, {
+        handleWorldRobotClick(id, {
+          selectedRobotId: this.fleet.selectedRobotId(),
           selectRobot: (robotId) => this.fleet.selectRobot(robotId),
           focusRobot: (robotId) => this.world.focusRobot(robotId),
-          openAsset: () => this.inspection.openAsset(),
+          closeInspection: () => this.inspection.close(),
+          toggleAsset: () => this.inspection.toggleAsset(),
         }),
     });
     this.world.syncFleet(mapFleetToWorldRobots(this.fleet.robots()));

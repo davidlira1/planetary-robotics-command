@@ -23,6 +23,8 @@ export const prcColors = {
   worldRing: '#21839a',
   worldLightAmbient: '#6f8a9a',
   worldLightKey: '#b7d7e4',
+  worldMetalSteel: '#6d8494',
+  worldMetalDark: '#24313b',
 } as const;
 
 export type PrcColorName = keyof typeof prcColors;

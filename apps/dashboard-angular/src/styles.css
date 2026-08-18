@@ -102,6 +102,19 @@ prc-root {
   background: var(--prc-status-critical);
 }
 
+.prc-robot-label--interactive {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.prc-robot-label--hovered {
+  opacity: 0.95;
+}
+
+.prc-robot-label--hovered .prc-robot-label__id {
+  color: var(--prc-accent-primary);
+}
+
 .prc-robot-label--selected {
   opacity: 1;
 }
@@ -111,6 +124,8 @@ prc-root {
 }
 
 .prc-robot-label--base {
+  pointer-events: none;
+  cursor: default;
   opacity: 0.7;
 }
 

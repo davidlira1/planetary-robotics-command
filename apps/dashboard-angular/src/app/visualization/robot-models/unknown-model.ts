@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
   applyHealthToBeacon,
+  applyHoverHighlight,
   applySelectionEmissive,
   createAccentMaterial,
   createBeaconMaterial,
@@ -38,11 +39,12 @@ export function createUnknownVisual(): RobotVisual {
       healthStatus = state.healthStatus;
       applyHealthToBeacon(beaconMat, state.healthStatus);
       applySelectionEmissive(accentMat, state.selected);
+      applyHoverHighlight(bodyMat, state.hovered, state.selected);
     },
     tick(deltaSeconds, _telemetry: RobotVisualTelemetry) {
       pulse += deltaSeconds;
       beaconMat.emissiveIntensity =
-        healthStatus === 'CRITICAL' ? 0.55 + 0.55 * (0.5 + 0.5 * Math.sin(pulse * 7)) : 0.45;
+        healthStatus === 'CRITICAL' ? 0.55 + 0.55 * (0.5 + 0.5 * Math.sin(pulse * 7)) : 0.5;
     },
     dispose: () => resources.dispose(),
   };

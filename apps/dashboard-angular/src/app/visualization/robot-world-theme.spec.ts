@@ -11,6 +11,8 @@ describe('robotWorldTheme', () => {
     expect(robotWorldTheme.muted).toBe(hexToThreeColor(prcColors.textMuted));
     expect(robotWorldTheme.background).toBe(hexToThreeColor(prcColors.bgWorld));
     expect(robotWorldTheme.graphite).toBe(hexToThreeColor(prcColors.bgMeterTrack));
+    expect(robotWorldTheme.metal).toBe(hexToThreeColor(prcColors.worldMetalSteel));
+    expect(robotWorldTheme.metalDark).toBe(hexToThreeColor(prcColors.worldMetalDark));
   });
 
   it('rejects invalid hex', () => {

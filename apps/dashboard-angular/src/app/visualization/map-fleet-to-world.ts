@@ -11,6 +11,7 @@ export function mapFleetToWorldRobots(robots: readonly FleetRobot[]): RobotWorld
         id: robot.id,
         type: resolveRobotWorldType(robot.type),
         position: robot.currentState.position,
+        recordedAt: robot.currentState.recordedAt,
         headingDegrees: robot.currentState.headingDegrees,
         velocityMetersPerSecond: robot.currentState.velocityMetersPerSecond,
         healthStatus: robot.health?.status ?? null,

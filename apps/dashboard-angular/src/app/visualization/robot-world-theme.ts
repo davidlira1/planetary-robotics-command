@@ -22,4 +22,6 @@ export const robotWorldTheme = {
   ring: hexToThreeColor(prcColors.worldRing),
   lightAmbient: hexToThreeColor(prcColors.worldLightAmbient),
   lightKey: hexToThreeColor(prcColors.worldLightKey),
+  metal: hexToThreeColor(prcColors.worldMetalSteel),
+  metalDark: hexToThreeColor(prcColors.worldMetalDark),
 } as const;

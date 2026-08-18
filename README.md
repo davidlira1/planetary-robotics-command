@@ -41,6 +41,14 @@ pnpm dev:dashboard      # Terminal 7 — http://localhost:4200 (proxies /api, /h
 
 After editing `infrastructure/docker/servicebus/Config.json`, recreate the Service Bus emulator container so the `realtime` subscription exists (`pnpm docker:down && pnpm docker:up`).
 
+Local Docker data:
+
+- `pnpm docker:down` — stops/removes containers but **preserves** the Postgres named volume `prc_postgres_data`
+- `pnpm docker:reset` — **destroys** local Docker volumes and recreates infrastructure (local only)
+- `pnpm dev:reset` — full fresh-development reset: volumes removed, infrastructure restarted, migrations applied, five-robot seed restored
+
+`docker:reset` and `dev:reset` erase telemetry history, current state, health state, alerts, outbox rows, and processed-message rows. Do not use them outside local development.
+
 The dashboard loads `/fleet` and `/alerts` once, then applies `robot.state.updated` over the live link. Header **API CONNECTED** is REST reachability; **LIVE LINK** is the WebSocket. There is no polling. Reconnect re-fetches `/fleet` and merges by `recordedAt`.
 
 Or one-shot setup helper: `pnpm setup` then the `dev:*` commands.

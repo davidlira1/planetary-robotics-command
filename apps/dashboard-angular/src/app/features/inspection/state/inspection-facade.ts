@@ -15,6 +15,14 @@ export class InspectionFacade {
     this._mode.set('asset');
   }
 
+  toggleAsset(): void {
+    if (this._mode() === 'asset') {
+      this.close();
+      return;
+    }
+    this.openAsset();
+  }
+
   openAlert(alertId: string): void {
     this._selectedAlertId.set(alertId);
     this._mode.set('alert');

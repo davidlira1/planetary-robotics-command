@@ -8,6 +8,7 @@ export interface RobotVisualTelemetry {
 export interface RobotVisualState {
   healthStatus: RobotWorldRobot['healthStatus'];
   selected: boolean;
+  hovered: boolean;
 }
 
 export interface RobotVisual {

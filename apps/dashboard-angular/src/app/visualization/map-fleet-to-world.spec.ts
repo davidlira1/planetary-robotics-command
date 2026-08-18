@@ -45,6 +45,7 @@ describe('mapFleetToWorldRobots', () => {
         id: 'W-08',
         type: 'DRONE',
         position: { x: 1, y: 2, z: 3 },
+        recordedAt: '2026-08-15T00:00:00.000Z',
         headingDegrees: 90,
         velocityMetersPerSecond: 1,
         healthStatus: 'WARNING',

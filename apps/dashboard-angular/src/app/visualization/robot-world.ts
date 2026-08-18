@@ -19,6 +19,7 @@ export interface RobotWorldRobot {
   id: string;
   type: RobotWorldType;
   position: { x: number; y: number; z: number } | null;
+  recordedAt: string;
   headingDegrees: number;
   velocityMetersPerSecond: number;
   healthStatus: 'HEALTHY' | 'WARNING' | 'CRITICAL' | null;

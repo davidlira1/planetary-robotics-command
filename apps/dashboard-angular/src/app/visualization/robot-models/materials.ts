@@ -16,12 +16,29 @@ export function healthColor(status: RobotWorldRobot['healthStatus']): number {
   return robotWorldTheme.muted;
 }
 
-export function createBodyMaterial(resources: ResourceBag, color = robotWorldTheme.graphite): THREE.MeshStandardMaterial {
+export const BODY_METALNESS = 0.72;
+export const BODY_ROUGHNESS = 0.32;
+export const HOVER_HULL_EMISSIVE = 0.06;
+
+export function createBodyMaterial(
+  resources: ResourceBag,
+  color = robotWorldTheme.metal,
+): THREE.MeshStandardMaterial {
   return resources.material(
     new THREE.MeshStandardMaterial({
       color,
-      metalness: 0.55,
-      roughness: 0.4,
+      metalness: BODY_METALNESS,
+      roughness: BODY_ROUGHNESS,
+    }),
+  );
+}
+
+export function createDarkMetalMaterial(resources: ResourceBag): THREE.MeshStandardMaterial {
+  return resources.material(
+    new THREE.MeshStandardMaterial({
+      color: robotWorldTheme.metalDark,
+      metalness: 0.7,
+      roughness: 0.38,
     }),
   );
 }
@@ -43,7 +60,7 @@ export function createBeaconMaterial(resources: ResourceBag): THREE.MeshStandard
     new THREE.MeshStandardMaterial({
       color: robotWorldTheme.muted,
       emissive: robotWorldTheme.muted,
-      emissiveIntensity: 0.45,
+      emissiveIntensity: 0.5,
       metalness: 0.1,
       roughness: 0.4,
     }),
@@ -61,6 +78,20 @@ export function applyHealthToBeacon(
 
 export function applySelectionEmissive(accent: THREE.MeshStandardMaterial, selected: boolean): void {
   accent.emissiveIntensity = selected ? 0.7 : 0.25;
+}
+
+export function applyHoverHighlight(
+  body: THREE.MeshStandardMaterial,
+  hovered: boolean,
+  selected: boolean,
+): void {
+  if (selected || !hovered) {
+    body.emissive.setHex(0);
+    body.emissiveIntensity = 0;
+    return;
+  }
+  body.emissive.setHex(robotWorldTheme.metal);
+  body.emissiveIntensity = HOVER_HULL_EMISSIVE;
 }
 
 export function mesh(geometry: THREE.BufferGeometry, material: THREE.Material): THREE.Mesh {
