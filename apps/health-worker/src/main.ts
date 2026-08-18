@@ -2,15 +2,12 @@ import { config as loadEnv } from 'dotenv';
 import { resolve } from 'path';
 import { EvaluateRobotHealth } from '@prc/application';
 import {
-  AzureServiceBusTelemetryConsumer,
-  SettlementAction,
-} from '@prc/messaging-asb';
-import {
   createPrismaClient,
   PrismaUnitOfWork,
 } from '@prc/persistence-prisma';
-import { Logger } from '@prc/ports';
+import { Logger, SettlementAction } from '@prc/ports';
 import { ZodError } from 'zod';
+import { createTelemetryConsumer } from './create-consumer';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
 
@@ -34,24 +31,10 @@ function isPermanent(err: unknown): boolean {
 }
 
 async function main() {
-  const connectionString = process.env.SERVICE_BUS_CONNECTION_STRING;
-  const topic =
-    process.env.SERVICE_BUS_TELEMETRY_TOPIC ?? 'robot.telemetry.received';
-  const subscription =
-    process.env.SERVICE_BUS_HEALTH_SUBSCRIPTION ?? 'health';
-
-  if (!connectionString) {
-    throw new Error('SERVICE_BUS_CONNECTION_STRING is required');
-  }
-
   const prisma = createPrismaClient();
   const unitOfWork = new PrismaUnitOfWork(prisma);
   const evaluate = new EvaluateRobotHealth(unitOfWork, logger);
-  const consumer = new AzureServiceBusTelemetryConsumer({
-    connectionString,
-    topicName: topic,
-    subscriptionName: subscription,
-  });
+  const consumer = createTelemetryConsumer('health');
 
   const shutdown = async () => {
     logger.info('Health worker shutting down');
@@ -63,34 +46,34 @@ async function main() {
   process.on('SIGINT', () => void shutdown());
   process.on('SIGTERM', () => void shutdown());
 
-  await consumer.start(async (body, message): Promise<SettlementAction> => {
+  await consumer.start(async (body, meta): Promise<SettlementAction> => {
     try {
       const result = await evaluate.execute(body);
       logger.info('Health message handled', {
         operation: 'health-worker',
-        eventId: String(message.messageId ?? ''),
-        correlationId: message.correlationId,
+        eventId: meta.messageId,
+        correlationId: meta.correlationId,
         result: result.status,
-        deliveryCount: message.deliveryCount,
+        deliveryCount: meta.deliveryCount,
       });
       return 'complete';
     } catch (err) {
       if (isPermanent(err)) {
         logger.error('Permanent health message failure', {
           operation: 'health-worker',
-          eventId: String(message.messageId ?? ''),
-          correlationId: message.correlationId,
+          eventId: meta.messageId,
+          correlationId: meta.correlationId,
           errorCode: 'PERMANENT',
-          deliveryCount: message.deliveryCount,
+          deliveryCount: meta.deliveryCount,
         });
         return 'deadLetter';
       }
       logger.error('Transient health message failure', {
         operation: 'health-worker',
-        eventId: String(message.messageId ?? ''),
-        correlationId: message.correlationId,
+        eventId: meta.messageId,
+        correlationId: meta.correlationId,
         errorCode: 'TRANSIENT',
-        deliveryCount: message.deliveryCount,
+        deliveryCount: meta.deliveryCount,
         err: err instanceof Error ? err.message : String(err),
       });
       return 'abandon';
@@ -99,8 +82,7 @@ async function main() {
 
   logger.info('Health worker started', {
     operation: 'health-worker',
-    topic,
-    subscription,
+    provider: process.env.MESSAGE_BROKER_PROVIDER ?? 'azure-service-bus',
   });
 }
 

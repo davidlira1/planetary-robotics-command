@@ -248,10 +248,15 @@ describe('API e2e', () => {
       .expect(200);
     expect(res.body.items.map((i: { id: string }) => i.id)).toEqual([
       'D-04',
+      'D-09',
       'H-17',
+      'H-22',
       'M-12',
+      'M-27',
       'S-03',
+      'S-11',
       'W-08',
+      'W-14',
     ]);
     expect(res.body.page.limit).toBe(50);
   });
@@ -269,16 +274,21 @@ describe('API e2e', () => {
     expect(res.body.health).toBeNull();
   });
 
-  it('GET /fleet returns five seeded robots with nullable state/health', async () => {
+  it('GET /fleet returns ten seeded robots with nullable state/health', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/fleet')
       .expect(200);
     expect(res.body.robots.map((r: { id: string }) => r.id)).toEqual([
       'D-04',
+      'D-09',
       'H-17',
+      'H-22',
       'M-12',
+      'M-27',
       'S-03',
+      'S-11',
       'W-08',
+      'W-14',
     ]);
     expect(res.body.robots.every((r: { health: unknown }) => r.health === null)).toBe(
       true,

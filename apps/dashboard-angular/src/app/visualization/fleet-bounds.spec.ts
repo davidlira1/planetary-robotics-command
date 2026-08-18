@@ -55,17 +55,22 @@ describe('calculateFleetBounds', () => {
     expect(bounds?.horizontalSpan).toBe(150);
   });
 
-  it('encloses the five seeded simulator start positions', () => {
+  it('encloses the ten seeded simulator start positions', () => {
     const bounds = calculateFleetBounds([
       robot('D-04', { x: 50, y: 60, z: -40 }),
+      robot('D-09', { x: -85, y: 55, z: 95 }),
       robot('H-17', { x: -120, y: 0, z: 80 }),
+      robot('H-22', { x: 165, y: 0, z: 45 }),
       robot('W-08', { x: 30, y: 0, z: 20 }),
+      robot('W-14', { x: -95, y: 0, z: -25 }),
       robot('M-12', { x: 200, y: 0, z: -150 }),
+      robot('M-27', { x: 95, y: 0, z: -115 }),
       robot('S-03', { x: -60, y: 0, z: -90 }),
+      robot('S-11', { x: 5, y: 0, z: 65 }),
     ]);
     expect(bounds?.min).toEqual({ x: -120, y: 0, z: -150 });
-    expect(bounds?.max).toEqual({ x: 200, y: 60, z: 80 });
-    expect(bounds?.center).toEqual({ x: 40, y: 30, z: -35 });
+    expect(bounds?.max).toEqual({ x: 200, y: 60, z: 95 });
+    expect(bounds?.center).toEqual({ x: 40, y: 30, z: -27.5 });
     expect(boundingSphereRadius(bounds!)).toBeGreaterThan(bounds!.horizontalSpan / 2);
   });
 });

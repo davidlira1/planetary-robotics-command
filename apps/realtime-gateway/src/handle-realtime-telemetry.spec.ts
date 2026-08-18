@@ -1,4 +1,4 @@
-import type { Logger } from '@prc/ports';
+import type { Logger, SettlementAction } from '@prc/ports';
 import { handleRealtimeTelemetry } from './handle-realtime-telemetry';
 import type { RealtimeBroadcaster } from './realtime-broadcaster';
 
@@ -45,7 +45,11 @@ function broadcaster(impl: Partial<RealtimeBroadcaster> = {}): RealtimeBroadcast
 describe('handleRealtimeTelemetry', () => {
   it('broadcasts a valid event once and completes', async () => {
     const publish = jest.fn().mockResolvedValue(undefined);
-    const action = await handleRealtimeTelemetry(validEvent(), broadcaster({ publish }), logger);
+    const action: SettlementAction = await handleRealtimeTelemetry(
+      validEvent(),
+      broadcaster({ publish }),
+      logger,
+    );
     expect(action).toBe('complete');
     expect(publish).toHaveBeenCalledTimes(1);
     const payload = JSON.parse(publish.mock.calls[0][0] as string);

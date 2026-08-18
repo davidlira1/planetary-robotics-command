@@ -1,14 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
-import { dollyInspectionPose } from './camera-dolly';
+import { CameraFollowSession, chasePose } from './camera-follow';
 import {
   cameraPositionFromTarget,
   calculateTightFleetCameraDistance,
   DEFAULT_VIEW_OFFSET,
   MARKER_RADIUS,
   MIN_FLEET_OVERVIEW_DISTANCE,
-  MIN_INSPECTION_DISTANCE,
   normalizeDirection,
 } from './camera-fit';
 import { findAncestorRobotId } from './find-ancestor-robot-id';
@@ -53,6 +52,7 @@ export class ThreeRobotWorld implements RobotWorld {
   private pointerDown: { x: number; y: number } | null = null;
   private readonly fitGate = new InitialFitGate();
   private readonly cameraController = new RobotWorldCameraController();
+  private readonly follow = new CameraFollowSession();
   private selectedId: string | null = null;
   private pendingRobots: readonly RobotWorldRobot[] | null = null;
   private lastPositionedRobots: readonly RobotWorldRobot[] = [];
@@ -69,6 +69,10 @@ export class ThreeRobotWorld implements RobotWorld {
     this.pointerDown = { x: event.clientX, y: event.clientY };
   };
   private readonly onPointerLeave = () => this.setHoveredRobotId(null);
+  private readonly onControlsStart = (): void => {
+    this.cameraController.active = false;
+    this.follow.cancel();
+  };
 
   initialize(host: HTMLElement, hooks: { onRobotSelected(id: string): void }): void {
     const pending = this.pendingRobots;
@@ -107,6 +111,7 @@ export class ThreeRobotWorld implements RobotWorld {
     controls.minDistance = MIN_DISTANCE;
     controls.maxDistance = DEFAULT_MAX_DISTANCE;
     controls.target.set(0, 0, 0);
+    controls.addEventListener('start', this.onControlsStart);
 
     const hemi = new THREE.HemisphereLight(robotWorldTheme.lightAmbient, robotWorldTheme.graphiteDark, HEMI_INTENSITY);
     scene.add(hemi);
@@ -211,25 +216,21 @@ export class ThreeRobotWorld implements RobotWorld {
     if (!this.camera || !this.controls) {
       return;
     }
-    const object = this.robots.get(robotId);
-    if (!object) {
+    const subject = this.renderedSubject(robotId);
+    if (!subject) {
       return;
     }
 
-    const startCameraPosition = this.camera.position.clone();
-    const startControlsTarget = this.controls.target.clone();
-    const endTarget = {
-      x: object.renderedPosition.x,
-      y: object.renderedPosition.y,
-      z: object.renderedPosition.z,
-    };
-    const pose = dollyInspectionPose(startCameraPosition, endTarget, MIN_INSPECTION_DISTANCE);
-    const startToTarget = startCameraPosition.distanceTo(startControlsTarget);
-    const startToRobot = startCameraPosition.distanceTo(
-      new THREE.Vector3(endTarget.x, endTarget.y, endTarget.z),
+    const pose = chasePose(subject.position, subject.headingDegrees);
+    const chaseSpan = Math.hypot(
+      pose.position.x - pose.target.x,
+      pose.position.y - pose.target.y,
+      pose.position.z - pose.target.z,
     );
-    this.controls.maxDistance = Math.max(this.controls.maxDistance, startToTarget, startToRobot);
-    this.cameraController.begin(pose.position, pose.target);
+    const startToTarget = this.camera.position.distanceTo(this.controls.target);
+    this.controls.maxDistance = Math.max(this.controls.maxDistance, startToTarget, chaseSpan);
+    this.cameraController.active = false;
+    this.follow.beginFocus(robotId, subject);
   }
 
   resize(width: number, height: number): void {
@@ -284,6 +285,8 @@ export class ThreeRobotWorld implements RobotWorld {
       this.scene?.remove(this.decorations.group);
       this.decorations.dispose();
     }
+    this.controls?.removeEventListener('start', this.onControlsStart);
+    this.follow.cancel();
     this.controls?.dispose();
     this.renderer?.dispose();
     this.renderer?.domElement.remove();
@@ -309,6 +312,30 @@ export class ThreeRobotWorld implements RobotWorld {
 
   private positionedCoords(): Vec3[] {
     return this.lastPositionedRobots.flatMap((robot) => (robot.position ? [robot.position] : []));
+  }
+
+  private renderedVec(robotId: string): Vec3 | null {
+    const object = this.robots.get(robotId);
+    if (!object) {
+      return null;
+    }
+    return {
+      x: object.renderedPosition.x,
+      y: object.renderedPosition.y,
+      z: object.renderedPosition.z,
+    };
+  }
+
+  private renderedSubject(robotId: string) {
+    const object = this.robots.get(robotId);
+    if (!object) {
+      return null;
+    }
+    const position = this.renderedVec(robotId);
+    if (!position) {
+      return null;
+    }
+    return { position, headingDegrees: object.renderedHeadingDegrees };
   }
 
   private viewDirection(): Vec3 {
@@ -346,6 +373,7 @@ export class ThreeRobotWorld implements RobotWorld {
     if (!this.camera || !this.controls) {
       return;
     }
+    this.follow.cancel();
     const bounds = calculatePositionBounds(positions);
     if (!bounds) {
       return;
@@ -398,8 +426,20 @@ export class ThreeRobotWorld implements RobotWorld {
     for (const object of this.robots.values()) {
       object.tick(deltaSeconds);
     }
+    const diagnosticTarget =
+      (this.selectedId ? this.robots.get(this.selectedId) : null) ?? this.robots.values().next().value;
+    diagnosticTarget?.logInterpolationDiagnostics();
     if (this.camera && this.controls) {
-      this.cameraController.tick(deltaSeconds, this.camera, this.controls);
+      if (this.follow.followedRobotId) {
+        this.follow.tick(
+          deltaSeconds,
+          this.camera,
+          this.controls.target,
+          this.renderedSubject(this.follow.followedRobotId),
+        );
+      } else {
+        this.cameraController.tick(deltaSeconds, this.camera, this.controls);
+      }
       this.controls.update();
     }
     if (this.renderer && this.scene && this.camera) {

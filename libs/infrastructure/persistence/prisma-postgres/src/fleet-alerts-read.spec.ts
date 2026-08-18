@@ -64,10 +64,15 @@ describeDb('Fleet and alert read repositories', () => {
     const snapshot = await fleet.getSnapshot();
     expect(snapshot.robots.map((r) => r.id)).toEqual([
       'D-04',
+      'D-09',
       'H-17',
+      'H-22',
       'M-12',
+      'M-27',
       'S-03',
+      'S-11',
       'W-08',
+      'W-14',
     ]);
     const d04 = snapshot.robots.find((r) => r.id === 'D-04')!;
     expect(d04.currentState?.batteryPercent).toBe(55);

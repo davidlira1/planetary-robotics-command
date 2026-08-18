@@ -5,7 +5,7 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "setup": "bash scripts/setup.sh",
-    "build": "pnpm --filter @prc/domain build && pnpm --filter @prc/ports build && pnpm --filter @prc/contracts build && pnpm --filter @prc/application build && pnpm --filter @prc/persistence-prisma build && pnpm --filter @prc/messaging-asb build && pnpm --filter @prc/simulation build && pnpm --filter @prc/http-telemetry-producer build && pnpm --filter @prc/api build && pnpm --filter @prc/outbox-publisher build && pnpm --filter @prc/health-worker build && pnpm --filter @prc/retention-worker build && pnpm --filter @prc/realtime-gateway build && pnpm --filter @prc/robot-simulator build && pnpm --filter @prc/dashboard-angular build",
+    "build": "pnpm --filter @prc/domain build && pnpm --filter @prc/ports build && pnpm --filter @prc/contracts build && pnpm --filter @prc/application build && pnpm --filter @prc/persistence-prisma build && pnpm --filter @prc/messaging-asb build && pnpm --filter @prc/messaging-rabbitmq build && pnpm --filter @prc/simulation build && pnpm --filter @prc/http-telemetry-producer build && pnpm --filter @prc/api build && pnpm --filter @prc/outbox-publisher build && pnpm --filter @prc/health-worker build && pnpm --filter @prc/retention-worker build && pnpm --filter @prc/realtime-gateway build && pnpm --filter @prc/robot-simulator build && pnpm --filter @prc/dashboard-angular build",
     "dev": "pnpm --filter @prc/api start:dev",
     "dev:api": "pnpm --filter @prc/api start:dev",
     "dev:outbox": "pnpm --filter @prc/outbox-publisher start:dev",
@@ -19,7 +19,7 @@
     "api:check:angular": "bash scripts/check-angular-client.sh",
     "start": "pnpm --filter @prc/api start:prod",
     "test": "pnpm -r test",
-    "test:unit": "pnpm --filter @prc/application test && pnpm --filter @prc/domain test && pnpm --filter @prc/simulation test && pnpm --filter @prc/http-telemetry-producer test && pnpm --filter @prc/robot-simulator test && pnpm --filter @prc/retention-worker test",
+    "test:unit": "pnpm --filter @prc/application test && pnpm --filter @prc/domain test && pnpm --filter @prc/simulation test && pnpm --filter @prc/http-telemetry-producer test && pnpm --filter @prc/robot-simulator test && pnpm --filter @prc/retention-worker test && pnpm --filter @prc/messaging-rabbitmq test && pnpm --filter @prc/realtime-gateway test",
     "test:integration": "pnpm --filter @prc/persistence-prisma test && pnpm --filter @prc/api test:e2e",
     "migrate": "pnpm --filter @prc/persistence-prisma migrate:dev",
     "migrate:deploy": "pnpm --filter @prc/persistence-prisma migrate:deploy",
@@ -29,7 +29,13 @@
     "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml --env-file .env up -d",
     "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml --env-file .env down",
     "docker:reset": "docker compose -f infrastructure/docker/docker-compose.yml --env-file .env down -v && docker compose -f infrastructure/docker/docker-compose.yml --env-file .env up -d",
-    "dev:reset": "bash scripts/reset-local.sh"
+    "dev:reset": "bash scripts/reset-local.sh",
+    "prod:build": "bash scripts/prod-build.sh",
+    "prod:init": "bash scripts/prod-init.sh",
+    "prod:up": "bash scripts/prod-up.sh",
+    "prod:down": "bash scripts/prod-down.sh",
+    "prod:reset": "bash scripts/prod-reset.sh",
+    "prod:logs": "bash scripts/prod-logs.sh"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

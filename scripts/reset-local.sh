@@ -36,4 +36,4 @@ pnpm seed
 
 echo ""
 echo "Local PRC environment reset successfully."
-echo "Database migrated and five robots seeded."
+echo "Database migrated and ten robots seeded."

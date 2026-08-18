@@ -90,7 +90,7 @@ describe('simulation physics', () => {
   });
 
   it('respects world boundaries', () => {
-    const robot = createSimulatedRobot(DEFAULT_FLEET[1]!);
+    const robot = createSimulatedRobot(DEFAULT_FLEET.find((r) => r.type === RobotType.HAULER)!);
     robot.position = { x: 49, y: 0, z: 0 };
     robot.velocity = { x: 20, y: 0, z: 0 };
     robot.behaviorPhase = 'idle';
@@ -106,7 +106,7 @@ describe('simulation physics', () => {
   });
 
   it('decreases battery with activity and clamps 0–100', () => {
-    const robot = createSimulatedRobot(DEFAULT_FLEET[1]!);
+    const robot = createSimulatedRobot(DEFAULT_FLEET.find((r) => r.type === RobotType.HAULER)!);
     robot.batteryPercent = 50;
     robot.behaviorPhase = 'moving';
     robot.velocity = { x: 3, y: 0, z: 0 };
@@ -130,7 +130,7 @@ describe('simulation physics', () => {
   });
 
   it('changes temperature gradually', () => {
-    const robot = createSimulatedRobot(DEFAULT_FLEET[3]!); // miner
+    const robot = createSimulatedRobot(DEFAULT_FLEET.find((r) => r.type === RobotType.MINER)!);
     robot.temperatureCelsius = 30;
     robot.behaviorPhase = 'working';
     const temps: number[] = [];
@@ -267,9 +267,15 @@ describe('telemetry snapshots', () => {
 });
 
 describe('fleet config', () => {
-  it('includes the five seeded robot ids without importing prisma', () => {
+  it('includes the ten seeded robot ids without importing prisma', () => {
     const ids = DEFAULT_FLEET.map((r) => r.robotId).sort();
-    expect(ids).toEqual(['D-04', 'H-17', 'M-12', 'S-03', 'W-08'].sort());
+    expect(ids).toEqual(
+      ['D-04', 'D-09', 'H-17', 'H-22', 'M-12', 'M-27', 'S-03', 'S-11', 'W-08', 'W-14'].sort(),
+    );
+    expect(new Set(ids).size).toBe(10);
+    for (const robot of DEFAULT_FLEET) {
+      expect(Object.values(RobotType)).toContain(robot.type);
+    }
   });
 
   it('applies battery overrides for threshold demos', () => {

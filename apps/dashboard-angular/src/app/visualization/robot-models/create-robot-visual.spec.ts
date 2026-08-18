@@ -13,7 +13,7 @@ describe('createRobotVisual', () => {
   it('uses the UNKNOWN fallback for unrecognized types at the factory boundary', () => {
     const visual = createRobotVisual('UNKNOWN');
     visual.updateVisualState({ healthStatus: 'HEALTHY', selected: true, hovered: false });
-    visual.tick(0.016, { velocityMetersPerSecond: 0 });
+    visual.tick(0.016, { velocityMetersPerSecond: 0, travelDistanceMeters: 0 });
     visual.dispose();
   });
 });

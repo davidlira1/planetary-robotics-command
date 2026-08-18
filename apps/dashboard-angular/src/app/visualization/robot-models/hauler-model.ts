@@ -11,6 +11,8 @@ import {
 } from './materials';
 import { ResourceBag } from './resources';
 import type { RobotVisual, RobotVisualState, RobotVisualTelemetry } from './robot-visual';
+import { createWheelAssembly } from './wheel-assembly';
+import { wheelRotationRadians } from '../wheel-rotation';
 
 export function createHaulerVisual(): RobotVisual {
   const resources = new ResourceBag();
@@ -36,19 +38,18 @@ export function createHaulerVisual(): RobotVisual {
   window.position.set(0, 3.15, 5.56);
   group.add(window);
 
-  const wheelGeo = resources.geometry(new THREE.CylinderGeometry(1.55, 1.55, 0.72, 16));
-  const wheels: THREE.Mesh[] = [];
+  const wheelRadius = 1.55;
+  const wheels: THREE.Group[] = [];
   for (const [x, z] of [
     [3.15, 3.5],
     [-3.15, 3.5],
     [3.15, -3.5],
     [-3.15, -3.5],
   ] as const) {
-    const wheel = mesh(wheelGeo, darkMat);
-    wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(x, 1.55, z);
-    wheels.push(wheel);
-    group.add(wheel);
+    const wheel = createWheelAssembly(resources, { radius: wheelRadius, width: 0.72 });
+    wheel.group.position.set(x, wheelRadius, z);
+    wheels.push(wheel.group);
+    group.add(wheel.group);
   }
 
   const beacon = mesh(resources.geometry(new THREE.SphereGeometry(0.28, 10, 8)), beaconMat);
@@ -67,7 +68,7 @@ export function createHaulerVisual(): RobotVisual {
       applyHoverHighlight(bodyMat, state.hovered, state.selected);
     },
     tick(deltaSeconds, telemetry: RobotVisualTelemetry) {
-      const spin = (telemetry.velocityMetersPerSecond / 1.55) * deltaSeconds;
+      const spin = wheelRotationRadians(telemetry.travelDistanceMeters, wheelRadius);
       for (const wheel of wheels) {
         wheel.rotation.x += spin;
       }

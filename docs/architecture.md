@@ -62,7 +62,7 @@ Raw `RobotCurrentState` stays factual; `RobotHealthState` is interpretation.
 
 ### Messaging portability
 
-Azure Service Bus lives under `@prc/messaging-asb`. Application/health logic depends on `EventPublisher` and repositories only. Kafka/RabbitMQ would be new adapters.
+Azure Service Bus lives under `@prc/messaging-asb`. RabbitMQ lives under `@prc/messaging-rabbitmq`. Application and workers depend on `EventPublisher` and `TelemetryConsumer`, not a broker SDK. `MESSAGE_BROKER_PROVIDER` selects the adapter (`azure-service-bus` for `pnpm dev:*`, `rabbitmq` for local production Compose).
 
 ### Telemetry lifecycle and retention
 
@@ -80,7 +80,7 @@ and processed-message rows (24h)
 
 Raw telemetry history is intentionally ephemeral in the demo deployment. Operational current state, health, and alerts are stored separately and are not deleted by this worker. Unpublished outbox rows (`publishedAt IS NULL`) are never deleted. See ADR 0023.
 
-Five robots at a 2-second cadence produce ~216,000 telemetry rows/day without retention; the 2-hour window keeps ~18,000.
+Ten robots at a 2-second cadence produce ~432,000 telemetry rows/day without retention; the 2-hour window keeps ~36,000.
 
 ## Layer 3 — simulated robot fleet
 
@@ -193,6 +193,26 @@ robot.telemetry.received
 ```
 
 REST answers "what is true when I connect / reconnect." The socket answers "what changed after I connected." `POST /telemetry` does not talk to WebSockets. The gateway does not write Postgres.
+
+## Local production (Nginx + RabbitMQ)
+
+`pnpm prod:up` runs the same topology a later Azure VM will use. Only Nginx publishes host port 80.
+
+```text
+Browser http://localhost
+    ↓
+Nginx
+    ├── /                Angular production static (SPA fallback)
+    ├── /api/            API
+    ├── /health/live|ready
+    └── /realtime        WebSocket upgrade → realtime-gateway
+           ↑
+Outbox publisher → RabbitMQ fanout robot.telemetry.received
+    ├── *.health queue (+ delayed retry, max 10, then DLQ)
+    └── *.realtime queue (+ delayed retry, max 10, then DLQ)
+```
+
+Postgres and RabbitMQ are internal-only (separate `prc_prod_*` volumes). `prod:down` keeps data; `prod:reset` destroys it. `dev:*` still uses the Service Bus emulator. See ADR 0024.
 
 ## Out of scope (later layers)
 

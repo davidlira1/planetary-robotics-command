@@ -118,13 +118,18 @@ describe('single-robot framing invariant', () => {
   });
 });
 
-describe('five-robot frustum framing', () => {
+describe('ten-robot frustum framing', () => {
   const fleet = [
     positioned('D-04', { x: 50, y: 60, z: -40 }),
+    positioned('D-09', { x: -85, y: 55, z: 95 }),
     positioned('H-17', { x: -120, y: 0, z: 80 }),
+    positioned('H-22', { x: 165, y: 0, z: 45 }),
     positioned('W-08', { x: 30, y: 0, z: 20 }),
+    positioned('W-14', { x: -95, y: 0, z: -25 }),
     positioned('M-12', { x: 200, y: 0, z: -150 }),
+    positioned('M-27', { x: 95, y: 0, z: -115 }),
     positioned('S-03', { x: -60, y: 0, z: -90 }),
+    positioned('S-11', { x: 5, y: 0, z: 65 }),
   ];
 
   it('projects the sphere center to NDC origin and keeps every robot in view', () => {

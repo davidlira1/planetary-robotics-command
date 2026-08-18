@@ -7,5 +7,6 @@ module.exports = {
     '^@prc/contracts$': '<rootDir>/../../libs/contracts/src/index.ts',
     '^@prc/ports$': '<rootDir>/../../libs/ports/src/index.ts',
     '^@prc/messaging-asb$': '<rootDir>/../../libs/infrastructure/messaging/azure-service-bus/src/index.ts',
+    '^@prc/messaging-rabbitmq$': '<rootDir>/../../libs/infrastructure/messaging/rabbitmq/src/index.ts',
   },
 };

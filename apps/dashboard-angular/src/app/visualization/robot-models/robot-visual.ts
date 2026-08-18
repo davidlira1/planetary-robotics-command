@@ -3,6 +3,7 @@ import type { RobotWorldRobot } from '../robot-world';
 
 export interface RobotVisualTelemetry {
   velocityMetersPerSecond: number;
+  travelDistanceMeters: number;
 }
 
 export interface RobotVisualState {

@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { INTERPOLATION_DELAY_MS, InterpolationBuffer, type InterpolatedPose } from './interpolation-buffer';
+import {
+  INTERPOLATION_DELAY_MS,
+  INTERPOLATION_DIAGNOSTICS,
+  InterpolationBuffer,
+  type InterpolatedPose,
+} from './interpolation-buffer';
 import { createRobotVisual } from './robot-models/create-robot-visual';
 import type { RobotVisual } from './robot-models/robot-visual';
 import { robotWorldTheme } from './robot-world-theme';
@@ -11,11 +16,14 @@ const LABEL_HEIGHT = 11.5;
 const LOCATOR_HEIGHT = 11;
 const HOVER_AMPLITUDE = 0.35;
 const HOVER_RATE = 1.6;
+const DIAGNOSTIC_THROTTLE_MS = 500;
+const ARRIVAL_DELTA_LIMIT = 8;
 
 export class RobotSceneObject {
   readonly group: THREE.Group;
   readonly authoritativePosition = new THREE.Vector3();
   readonly renderedPosition = new THREE.Vector3();
+  renderedHeadingDegrees = 0;
   private readonly motion = new InterpolationBuffer();
 
   private readonly visualRoot: THREE.Group;
@@ -29,12 +37,15 @@ export class RobotSceneObject {
   private readonly type: RobotWorldRobot['type'];
 
   private velocityMetersPerSecond = 0;
-  private renderedHeadingDegrees = 0;
   private selected = false;
   private hovered = false;
   private pulseTime = 0;
   private hoverTime = 0;
   private healthStatus: RobotWorldRobot['healthStatus'] = null;
+  private lastArrivalWallMs: number | null = null;
+  private lastClockSkewMs: number | null = null;
+  private lastDiagnosticLogMs = 0;
+  private readonly arrivalDeltasMs: number[] = [];
   private labelHandler: ((event: LabelInteract) => void) | null = null;
   private readonly onLabelPointerEnter = () => {
     this.labelHandler?.({ type: 'enter', robotId: this.labelRobotId() });
@@ -102,12 +113,15 @@ export class RobotSceneObject {
       const recordedAtMs = Date.parse(robot.recordedAt);
       if (Number.isFinite(recordedAtMs)) {
         const firstSample = this.motion.size === 0;
-        this.motion.push({
+        const accepted = this.motion.push({
           recordedAtMs,
           position: robot.position,
           headingDegrees: robot.headingDegrees,
           velocityMetersPerSecond: robot.velocityMetersPerSecond,
         });
+        if (accepted) {
+          this.recordArrival(recordedAtMs);
+        }
         if (snap || firstSample) {
           this.applyRenderedPose({
             position: robot.position,
@@ -130,21 +144,51 @@ export class RobotSceneObject {
   }
 
   tick(deltaSeconds: number): void {
+    const previous = this.renderedPosition.clone();
     const pose = this.motion.poseAt(Date.now() - INTERPOLATION_DELAY_MS);
     if (pose) {
       this.applyRenderedPose(pose);
     }
+    const travelDistanceMeters = this.renderedPosition.distanceTo(previous);
 
     this.hoverTime += deltaSeconds;
     this.visualRoot.position.y =
       this.type === 'DRONE' ? Math.sin(this.hoverTime * HOVER_RATE) * HOVER_AMPLITUDE : 0;
 
-    this.visual.tick(deltaSeconds, { velocityMetersPerSecond: this.velocityMetersPerSecond });
+    this.visual.tick(deltaSeconds, {
+      velocityMetersPerSecond: this.velocityMetersPerSecond,
+      travelDistanceMeters,
+    });
 
     if (this.selected) {
       this.pulseTime += deltaSeconds;
     }
     this.syncAccent();
+  }
+
+  logInterpolationDiagnostics(nowMs = Date.now()): void {
+    if (!INTERPOLATION_DIAGNOSTICS || nowMs - this.lastDiagnosticLogMs < DIAGNOSTIC_THROTTLE_MS) {
+      return;
+    }
+    this.lastDiagnosticLogMs = nowMs;
+    const renderTimeMs = nowMs - INTERPOLATION_DELAY_MS;
+    const inspect = this.motion.inspectPoseAt(renderTimeMs);
+    if (!inspect) {
+      return;
+    }
+    console.debug('[prc-interp]', {
+      robotId: this.group.name,
+      newestRecordedAtMs: inspect.newestRecordedAtMs,
+      previousRecordedAtMs: inspect.previousRecordedAtMs,
+      oldestRecordedAtMs: inspect.oldestRecordedAtMs,
+      nowMs,
+      renderTimeMs,
+      mode: inspect.mode,
+      t: inspect.t,
+      arrivalDeltasMs: [...this.arrivalDeltasMs],
+      clockSkewMs: this.lastClockSkewMs,
+      sampleCount: inspect.sampleCount,
+    });
   }
 
   dispose(): void {
@@ -158,6 +202,18 @@ export class RobotSceneObject {
     this.ringMaterial.dispose();
     this.locatorMaterial.dispose();
     this.labelElement.remove();
+  }
+
+  private recordArrival(recordedAtMs: number): void {
+    const nowMs = Date.now();
+    this.lastClockSkewMs = nowMs - recordedAtMs;
+    if (this.lastArrivalWallMs != null) {
+      this.arrivalDeltasMs.push(nowMs - this.lastArrivalWallMs);
+      if (this.arrivalDeltasMs.length > ARRIVAL_DELTA_LIMIT) {
+        this.arrivalDeltasMs.shift();
+      }
+    }
+    this.lastArrivalWallMs = nowMs;
   }
 
   private labelRobotId(): string {

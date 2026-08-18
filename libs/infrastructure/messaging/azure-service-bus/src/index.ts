@@ -5,6 +5,5 @@ export {
 export {
   AzureServiceBusTelemetryConsumer,
   type AzureServiceBusConsumerConfig,
-  type MessageHandler,
   type SettlementAction,
 } from './consumer';

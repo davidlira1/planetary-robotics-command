@@ -5,7 +5,7 @@ type Client = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Deletes expired operational rows with Prisma `deleteMany`.
- * Appropriate for the current 5-robot / 2-hour portfolio volume (~18k telemetry
+ * Appropriate for the current 10-robot / 2-hour portfolio volume (~36k telemetry
  * rows). Each method is isolated so a later LIMIT-batch loop can replace
  * `deleteMany` without changing the port.
  */

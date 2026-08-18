@@ -1,11 +1,11 @@
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'path';
-import { AzureServiceBusEventPublisher } from '@prc/messaging-asb';
 import {
   createPrismaClient,
   PrismaOutboxRepository,
 } from '@prc/persistence-prisma';
 import { IntegrationEvent, Logger } from '@prc/ports';
+import { createEventPublisher } from './create-publisher';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
 
@@ -46,23 +46,13 @@ function toIntegrationEvent(payloadJson: string): IntegrationEvent {
 }
 
 async function main() {
-  const connectionString = process.env.SERVICE_BUS_CONNECTION_STRING;
-  const topic =
-    process.env.SERVICE_BUS_TELEMETRY_TOPIC ?? 'robot.telemetry.received';
   const pollMs = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 500);
   const claimMs = Number(process.env.OUTBOX_CLAIM_DURATION_MS ?? 30_000);
   const batchSize = Number(process.env.OUTBOX_BATCH_SIZE ?? 20);
 
-  if (!connectionString) {
-    throw new Error('SERVICE_BUS_CONNECTION_STRING is required');
-  }
-
   const prisma = createPrismaClient();
   const outbox = new PrismaOutboxRepository(prisma);
-  const publisher = new AzureServiceBusEventPublisher({
-    connectionString,
-    topicName: topic,
-  });
+  const publisher = createEventPublisher();
 
   let stopping = false;
 
@@ -81,7 +71,7 @@ async function main() {
   logger.info('Outbox publisher started', {
     operation: 'outbox-publisher',
     pollMs,
-    topic,
+    provider: process.env.MESSAGE_BROKER_PROVIDER ?? 'azure-service-bus',
   });
 
   while (!stopping) {

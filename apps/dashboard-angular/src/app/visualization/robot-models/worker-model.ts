@@ -11,6 +11,8 @@ import {
 } from './materials';
 import { ResourceBag } from './resources';
 import type { RobotVisual, RobotVisualState, RobotVisualTelemetry } from './robot-visual';
+import { createWheelAssembly } from './wheel-assembly';
+import { wheelRotationRadians } from '../wheel-rotation';
 
 export function createWorkerVisual(): RobotVisual {
   const resources = new ResourceBag();
@@ -36,17 +38,18 @@ export function createWorkerVisual(): RobotVisual {
   tool.position.set(1.35, 2.55, 2.7);
   group.add(tool);
 
-  const wheelGeo = resources.geometry(new THREE.CylinderGeometry(0.7, 0.7, 0.4, 12));
+  const wheelRadius = 0.7;
+  const wheels: THREE.Group[] = [];
   for (const [x, z] of [
     [1.55, 1.5],
     [-1.55, 1.5],
     [1.55, -1.5],
     [-1.55, -1.5],
   ] as const) {
-    const wheel = mesh(wheelGeo, darkMat);
-    wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(x, 0.7, z);
-    group.add(wheel);
+    const wheel = createWheelAssembly(resources, { radius: wheelRadius, width: 0.4 });
+    wheel.group.position.set(x, wheelRadius, z);
+    wheels.push(wheel.group);
+    group.add(wheel.group);
   }
 
   const beacon = mesh(resources.geometry(new THREE.SphereGeometry(0.22, 10, 8)), beaconMat);
@@ -64,7 +67,11 @@ export function createWorkerVisual(): RobotVisual {
       applySelectionEmissive(accentMat, state.selected);
       applyHoverHighlight(bodyMat, state.hovered, state.selected);
     },
-    tick(deltaSeconds, _telemetry: RobotVisualTelemetry) {
+    tick(deltaSeconds, telemetry: RobotVisualTelemetry) {
+      const spin = wheelRotationRadians(telemetry.travelDistanceMeters, wheelRadius);
+      for (const wheel of wheels) {
+        wheel.rotation.x += spin;
+      }
       pulse += deltaSeconds;
       beaconMat.emissiveIntensity =
         healthStatus === 'CRITICAL' ? 0.55 + 0.55 * (0.5 + 0.5 * Math.sin(pulse * 7)) : 0.5;

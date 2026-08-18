@@ -36,7 +36,7 @@ export interface FleetRobotConfig {
 }
 
 /**
- * Fleet matching the five platform seed robot IDs/types.
+ * Fleet matching the ten platform seed robot IDs/types.
  * Kept inside simulation — does not import persistence seed code.
  */
 export const DEFAULT_FLEET: readonly FleetRobotConfig[] = [
@@ -49,12 +49,28 @@ export const DEFAULT_FLEET: readonly FleetRobotConfig[] = [
     initialTemperatureCelsius: 20,
   },
   {
+    robotId: 'D-09',
+    type: RobotType.DRONE,
+    model: 'AX-4 Survey Drone',
+    initialPosition: { x: -85, y: 55, z: 95 },
+    initialBatteryPercent: 90,
+    initialTemperatureCelsius: 18,
+  },
+  {
     robotId: 'H-17',
     type: RobotType.HAULER,
     model: 'HX-9 Heavy Transport',
     initialPosition: { x: -120, y: 0, z: 80 },
     initialBatteryPercent: 78,
     initialTemperatureCelsius: 26,
+  },
+  {
+    robotId: 'H-22',
+    type: RobotType.HAULER,
+    model: 'HX-9 Heavy Transport',
+    initialPosition: { x: 165, y: 0, z: 45 },
+    initialBatteryPercent: 74,
+    initialTemperatureCelsius: 27,
   },
   {
     robotId: 'W-08',
@@ -65,6 +81,14 @@ export const DEFAULT_FLEET: readonly FleetRobotConfig[] = [
     initialTemperatureCelsius: 24,
   },
   {
+    robotId: 'W-14',
+    type: RobotType.WORKER,
+    model: 'WX-3 Utility Droid',
+    initialPosition: { x: -95, y: 0, z: -25 },
+    initialBatteryPercent: 82,
+    initialTemperatureCelsius: 23,
+  },
+  {
     robotId: 'M-12',
     type: RobotType.MINER,
     model: 'MX-7 Excavation Unit',
@@ -73,12 +97,28 @@ export const DEFAULT_FLEET: readonly FleetRobotConfig[] = [
     initialTemperatureCelsius: 32,
   },
   {
+    robotId: 'M-27',
+    type: RobotType.MINER,
+    model: 'MX-7 Excavation Unit',
+    initialPosition: { x: 95, y: 0, z: -115 },
+    initialBatteryPercent: 68,
+    initialTemperatureCelsius: 31,
+  },
+  {
     robotId: 'S-03',
     type: RobotType.SCOUT,
     model: 'SX-2 Recon Rover',
     initialPosition: { x: -60, y: 0, z: -90 },
     initialBatteryPercent: 88,
     initialTemperatureCelsius: 22,
+  },
+  {
+    robotId: 'S-11',
+    type: RobotType.SCOUT,
+    model: 'SX-2 Recon Rover',
+    initialPosition: { x: 5, y: 0, z: 65 },
+    initialBatteryPercent: 86,
+    initialTemperatureCelsius: 21,
   },
 ] as const;
 

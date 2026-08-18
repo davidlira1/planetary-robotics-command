@@ -6,6 +6,7 @@ export * from './logger';
 export * from './database-readiness';
 export * from './messaging-types';
 export * from './event-publisher';
+export * from './telemetry-consumer';
 export * from './outbox-repository';
 export * from './robot-health-repository';
 export * from './alert-repository';

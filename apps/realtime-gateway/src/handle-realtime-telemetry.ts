@@ -2,8 +2,7 @@ import {
   RobotTelemetryReceivedEventV1Schema,
   type RobotStateUpdatedV1,
 } from '@prc/contracts';
-import type { SettlementAction } from '@prc/messaging-asb';
-import type { Logger } from '@prc/ports';
+import type { Logger, SettlementAction } from '@prc/ports';
 import { mapRobotStateUpdated } from './map-robot-state-updated';
 import type { RealtimeBroadcaster } from './realtime-broadcaster';
 

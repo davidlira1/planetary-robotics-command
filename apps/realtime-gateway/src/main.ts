@@ -1,7 +1,7 @@
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'path';
-import { AzureServiceBusTelemetryConsumer } from '@prc/messaging-asb';
 import { Logger } from '@prc/ports';
+import { createTelemetryConsumer } from './create-consumer';
 import { handleRealtimeTelemetry } from './handle-realtime-telemetry';
 import { WsRealtimeBroadcaster } from './ws-realtime-broadcaster';
 
@@ -23,24 +23,11 @@ const logger: Logger = {
 };
 
 async function main() {
-  const connectionString = process.env.SERVICE_BUS_CONNECTION_STRING;
-  const topic =
-    process.env.SERVICE_BUS_TELEMETRY_TOPIC ?? 'robot.telemetry.received';
-  const subscription =
-    process.env.SERVICE_BUS_REALTIME_SUBSCRIPTION ?? 'realtime';
   const port = Number(process.env.REALTIME_GATEWAY_PORT ?? 3001);
   const path = process.env.REALTIME_GATEWAY_PATH ?? '/realtime';
 
-  if (!connectionString) {
-    throw new Error('SERVICE_BUS_CONNECTION_STRING is required');
-  }
-
   const broadcaster = new WsRealtimeBroadcaster(logger, port, path);
-  const consumer = new AzureServiceBusTelemetryConsumer({
-    connectionString,
-    topicName: topic,
-    subscriptionName: subscription,
-  });
+  const consumer = createTelemetryConsumer();
 
   let stopping = false;
   const shutdown = async () => {
@@ -57,15 +44,15 @@ async function main() {
   process.on('SIGINT', () => void shutdown());
   process.on('SIGTERM', () => void shutdown());
 
-  await consumer.start(async (body, message) => {
+  await consumer.start(async (body, meta) => {
     const action = await handleRealtimeTelemetry(body, broadcaster, logger);
     if (action !== 'complete') {
       logger.warn('Realtime settlement', {
         operation: 'realtime-gateway',
-        eventId: String(message.messageId ?? ''),
-        correlationId: message.correlationId,
+        eventId: meta.messageId,
+        correlationId: meta.correlationId,
         action,
-        deliveryCount: message.deliveryCount,
+        deliveryCount: meta.deliveryCount,
       });
     }
     return action;
@@ -73,8 +60,7 @@ async function main() {
 
   logger.info('Realtime gateway started', {
     operation: 'realtime-gateway',
-    topic,
-    subscription,
+    provider: process.env.MESSAGE_BROKER_PROVIDER ?? 'azure-service-bus',
     port,
     path,
   });

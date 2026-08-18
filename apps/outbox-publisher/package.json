@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@prc/messaging-asb": "workspace:*",
+    "@prc/messaging-rabbitmq": "workspace:*",
     "@prc/persistence-prisma": "workspace:*",
     "@prc/ports": "workspace:*",
     "@prisma/client": "6.19.3",

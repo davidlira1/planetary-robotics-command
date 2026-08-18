@@ -4,6 +4,8 @@ coverage/
 .env
 **/.env
 !.env.example
+.env.prod
+!.env.prod.example
 *.log
 .DS_Store
 .turbo/

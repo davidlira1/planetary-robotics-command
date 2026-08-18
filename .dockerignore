@@ -1,0 +1,12 @@
+.git
+**/.git
+**/node_modules
+**/dist
+**/.angular
+**/.env
+.env.prod
+*.log
+coverage
+.DS_Store
+apps/dashboard-angular/.angular
+**/*.tsbuildinfo

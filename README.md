@@ -3,7 +3,7 @@
 Enterprise-oriented planetary robotics command platform.
 
 - **Layer 1:** NestJS API, hexagonal domain/application, Prisma/PostgreSQL, telemetry ingest, fleet/telemetry reads
-- **Layer 2:** Transactional outbox, Azure Service Bus (local emulator), outbox publisher, health worker, derived health + transition alerts, retention worker
+- **Layer 2:** Transactional outbox, Azure Service Bus (local `dev:*` emulator) or RabbitMQ (local production Compose), outbox publisher, health worker, derived health + transition alerts, retention worker
 - **Layer 3:** Robot fleet simulator posting believable telemetry through the public HTTP API
 - **Layer 4:** Dashboard read models — `GET /fleet`, alerts list, health on robot detail
 - **Layer 5:** Angular 22 command dashboard + Three.js world
@@ -46,13 +46,13 @@ Local Docker data:
 
 - `pnpm docker:down` — stops/removes containers but **preserves** the Postgres named volume `prc_postgres_data`
 - `pnpm docker:reset` — **destroys** local Docker volumes and recreates infrastructure (local only)
-- `pnpm dev:reset` — full fresh-development reset: volumes removed, infrastructure restarted, migrations applied, five-robot seed restored
+- `pnpm dev:reset` — full fresh-development reset: volumes removed, infrastructure restarted, migrations applied, ten-robot seed restored
 
 `docker:reset` and `dev:reset` erase telemetry history, current state, health state, alerts, outbox rows, and processed-message rows. Do not use them outside local development. The retention worker is different: it continuously deletes expired history on a live database and does not replace `dev:reset`.
 
 Default simulator cadence is one telemetry sample per robot every **2 seconds** (`TELEMETRY_INTERVAL_MS=2000`). Physics still ticks at 100 ms. Retention (defaults):
 
-- raw telemetry — 2 hours (~18,000 rows at 5 robots × 2s; ~216,000 rows/day without retention)
+- raw telemetry — 2 hours (~36,000 rows at 10 robots × 2s; ~432,000 rows/day without retention)
 - published outbox — 2 hours
 - processed-message idempotency — 24 hours
 
@@ -62,9 +62,36 @@ The dashboard loads `/fleet` and `/alerts` once, then applies `robot.state.updat
 
 Or one-shot setup helper: `pnpm setup` then the `dev:*` commands.
 
+## Local production stack
+
+One Compose topology (Nginx + Postgres + RabbitMQ + API + workers + simulator). Cursor acceptance is `http://localhost` after `pnpm prod:up`. RabbitMQ and Postgres are not published on the host. Production images use Node 24.15. This is also the file a later Azure VM would run; this repo does not provision Azure.
+
+```bash
+cp .env.prod.example .env.prod   # first time
+pnpm prod:init                   # first-time create: migrate + seed + start
+# later:
+pnpm prod:up                     # start/update; migrate; do not seed
+pnpm prod:down                   # stop; keep volumes
+pnpm prod:logs
+pnpm prod:reset                  # DESTROYS prc_prod_* volumes, then re-inits
+```
+
+| Command | Meaning |
+|---------|---------|
+| `prod:init` | First-time create. Build, start Postgres/RabbitMQ, migrate, **seed** (idempotent upsert), start the stack. Never deletes volumes. |
+| `prod:up` | Start/update. Migrate before apps. **Does not seed.** Preserves volumes. |
+| `prod:down` | Stop containers/networks. **Keeps** Postgres and RabbitMQ volumes. |
+| `prod:reset` | Destroy `prc_prod_postgres_data` and `prc_prod_rabbitmq_data`, then the same as init. |
+
+RabbitMQ transient failures retry with a 2s delay, max 10 deliveries, then dead-letter (`RABBITMQ_MAX_DELIVERY_COUNT`, `RABBITMQ_RETRY_TTL_MS`). Permanent validation failures dead-letter immediately.
+
+Manual check after `prod:up`: Angular at `/`, `/api/v1/fleet`, `/health/live`, WebSocket `/realtime`, ten robots, 2s telemetry, `prod:down` then `prod:up` restores state. No Angular dev proxy. After adding seed robots, use `pnpm seed` or `pnpm dev:reset` locally; `prod:up` does not re-seed.
+
+`prod:*` volumes are **not** `prc_postgres_data` (that one belongs to `pnpm docker:up`).
+
 ### Simulator demo notes
 
-- Default fleet: `D-04`, `H-17`, `W-08`, `M-12`, `S-03` (matches seed IDs; simulator does not import Prisma seed code).
+- Default fleet: `D-04`, `D-09`, `H-17`, `H-22`, `W-08`, `W-14`, `M-12`, `M-27`, `S-03`, `S-11` (matches seed IDs; simulator does not import Prisma seed code).
 - Telemetry emission: every 2 seconds (`TELEMETRY_INTERVAL_MS`). Simulation physics tick stays 100 ms.
 - Optional threshold scenario: set `SIM_D04_BATTERY=19` in `.env` to start the drone near the battery WARNING band.
 - Deterministic runs: set `SIMULATION_SEED=12345`.
@@ -140,6 +167,7 @@ docker exec -it prc-postgres psql -U prc -d prc -c 'SELECT "consumerName", COUNT
 - Realtime gateway: `http://localhost:3001/realtime` (dashboard proxies `/realtime`)
 - Connection string uses `UseDevelopmentEmulator=true` (see `.env.example`)
 - Permanent consumer failures dead-letter the message; inspect via emulator tooling / Azure SDK DLQ receiver against the health or realtime subscription DLQ
+- Local production (`pnpm prod:up`) uses RabbitMQ instead; DLQs are `robot.telemetry.received.health.dlq` and `robot.telemetry.received.realtime.dlq` inside the broker (no host ports)
 
 ## Tests
 

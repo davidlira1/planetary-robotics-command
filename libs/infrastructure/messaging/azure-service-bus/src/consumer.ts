@@ -4,8 +4,13 @@ import {
   ServiceBusReceivedMessage,
   ServiceBusReceiver,
 } from '@azure/service-bus';
+import type {
+  SettlementAction,
+  TelemetryConsumer,
+  TelemetryMessageHandler,
+} from '@prc/ports';
 
-export type SettlementAction = 'complete' | 'abandon' | 'deadLetter';
+export type { SettlementAction };
 
 export interface AzureServiceBusConsumerConfig {
   connectionString: string;
@@ -13,12 +18,7 @@ export interface AzureServiceBusConsumerConfig {
   subscriptionName: string;
 }
 
-export type MessageHandler = (
-  body: unknown,
-  message: ServiceBusReceivedMessage,
-) => Promise<SettlementAction>;
-
-export class AzureServiceBusTelemetryConsumer {
+export class AzureServiceBusTelemetryConsumer implements TelemetryConsumer {
   private readonly client: ServiceBusClient;
   private readonly receiver: ServiceBusReceiver;
   private running = false;
@@ -32,16 +32,21 @@ export class AzureServiceBusTelemetryConsumer {
     );
   }
 
-  async start(handler: MessageHandler): Promise<void> {
+  async start(handler: TelemetryMessageHandler): Promise<void> {
     this.running = true;
     this.receiver.subscribe({
-      processMessage: async (message) => {
+      processMessage: async (message: ServiceBusReceivedMessage) => {
         if (!this.running) {
           await this.receiver.abandonMessage(message);
           return;
         }
         try {
-          const action = await handler(message.body, message);
+          const action: SettlementAction = await handler(message.body, {
+            messageId: String(message.messageId ?? ''),
+            correlationId:
+              message.correlationId != null ? String(message.correlationId) : undefined,
+            deliveryCount: message.deliveryCount ?? 1,
+          });
           if (action === 'complete') {
             await this.receiver.completeMessage(message);
           } else if (action === 'abandon') {

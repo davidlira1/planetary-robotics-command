@@ -1,0 +1,242 @@
+name: prc-prod
+
+x-worker-build: &worker-build
+  context: ../..
+  dockerfile: infrastructure/docker/Dockerfile.worker
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prc-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-prc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prc}
+      POSTGRES_DB: ${POSTGRES_DB:-prc}
+    volumes:
+      - prc_prod_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prc} -d ${POSTGRES_DB:-prc}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - prc-prod
+
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    container_name: prc-prod-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-prc}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-prc}
+    volumes:
+      - prc_prod_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - prc-prod
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: prc-prod-migrate
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    command: ["pnpm", "--filter", "@prc/persistence-prisma", "migrate:deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - prc-prod
+
+  seed:
+    profiles: ["init"]
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: prc-prod-seed
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    command: ["pnpm", "--filter", "@prc/persistence-prisma", "seed"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - prc-prod
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: prc-prod-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - prc-prod
+
+  outbox-publisher:
+    build:
+      <<: *worker-build
+      args:
+        PACKAGE: "@prc/outbox-publisher"
+        MAIN: apps/outbox-publisher/dist/main.js
+    container_name: prc-prod-outbox
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      MESSAGE_BROKER_PROVIDER: rabbitmq
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_EXCHANGE: robot.telemetry.received
+      RABBITMQ_RETRY_TTL_MS: ${RABBITMQ_RETRY_TTL_MS:-2000}
+      OUTBOX_POLL_INTERVAL_MS: ${OUTBOX_POLL_INTERVAL_MS:-500}
+      OUTBOX_CLAIM_DURATION_MS: ${OUTBOX_CLAIM_DURATION_MS:-30000}
+      OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-20}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - prc-prod
+
+  health-worker:
+    build:
+      <<: *worker-build
+      args:
+        PACKAGE: "@prc/health-worker"
+        MAIN: apps/health-worker/dist/main.js
+    container_name: prc-prod-health
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      MESSAGE_BROKER_PROVIDER: rabbitmq
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_MAX_DELIVERY_COUNT: ${RABBITMQ_MAX_DELIVERY_COUNT:-10}
+      RABBITMQ_RETRY_TTL_MS: ${RABBITMQ_RETRY_TTL_MS:-2000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - prc-prod
+
+  realtime-gateway:
+    build:
+      <<: *worker-build
+      args:
+        PACKAGE: "@prc/realtime-gateway"
+        MAIN: apps/realtime-gateway/dist/main.js
+    container_name: prc-prod-realtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MESSAGE_BROKER_PROVIDER: rabbitmq
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_MAX_DELIVERY_COUNT: ${RABBITMQ_MAX_DELIVERY_COUNT:-10}
+      RABBITMQ_RETRY_TTL_MS: ${RABBITMQ_RETRY_TTL_MS:-2000}
+      REALTIME_GATEWAY_PORT: 3001
+      REALTIME_GATEWAY_PATH: /realtime
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - prc-prod
+
+  retention-worker:
+    build:
+      <<: *worker-build
+      args:
+        PACKAGE: "@prc/retention-worker"
+        MAIN: apps/retention-worker/dist/main.js
+    container_name: prc-prod-retention
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      TELEMETRY_RETENTION_HOURS: ${TELEMETRY_RETENTION_HOURS:-2}
+      PUBLISHED_OUTBOX_RETENTION_HOURS: ${PUBLISHED_OUTBOX_RETENTION_HOURS:-2}
+      PROCESSED_MESSAGE_RETENTION_HOURS: ${PROCESSED_MESSAGE_RETENTION_HOURS:-24}
+      RETENTION_INTERVAL_MINUTES: ${RETENTION_INTERVAL_MINUTES:-10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - prc-prod
+
+  robot-simulator:
+    build:
+      <<: *worker-build
+      args:
+        PACKAGE: "@prc/robot-simulator"
+        MAIN: apps/robot-simulator/dist/main.js
+    container_name: prc-prod-simulator
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      SIMULATOR_API_BASE_URL: http://api:3000
+      SIMULATION_TICK_MS: ${SIMULATION_TICK_MS:-100}
+      TELEMETRY_INTERVAL_MS: ${TELEMETRY_INTERVAL_MS:-2000}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - prc-prod
+
+  nginx:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.dashboard
+    container_name: prc-prod-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      realtime-gateway:
+        condition: service_started
+    networks:
+      - prc-prod
+
+volumes:
+  prc_prod_postgres_data:
+  prc_prod_rabbitmq_data:
+
+networks:
+  prc-prod:
+    driver: bridge

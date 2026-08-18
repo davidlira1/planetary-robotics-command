@@ -12,6 +12,8 @@ import {
 } from './materials';
 import { ResourceBag } from './resources';
 import type { RobotVisual, RobotVisualState, RobotVisualTelemetry } from './robot-visual';
+import { createWheelAssembly } from './wheel-assembly';
+import { wheelRotationRadians } from '../wheel-rotation';
 
 export function createMinerVisual(): RobotVisual {
   const resources = new ResourceBag();
@@ -58,17 +60,18 @@ export function createMinerVisual(): RobotVisual {
     group.add(lamp);
   }
 
-  const wheelGeo = resources.geometry(new THREE.CylinderGeometry(1.15, 1.15, 0.7, 12));
+  const wheelRadius = 1.15;
+  const wheels: THREE.Group[] = [];
   for (const [x, z] of [
     [2.55, 2.4],
     [-2.55, 2.4],
     [2.55, -2.4],
     [-2.55, -2.4],
   ] as const) {
-    const wheel = mesh(wheelGeo, darkMat);
-    wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(x, 1.15, z);
-    group.add(wheel);
+    const wheel = createWheelAssembly(resources, { radius: wheelRadius, width: 0.7 });
+    wheel.group.position.set(x, wheelRadius, z);
+    wheels.push(wheel.group);
+    group.add(wheel.group);
   }
 
   const beacon = mesh(resources.geometry(new THREE.SphereGeometry(0.26, 10, 8)), beaconMat);
@@ -86,7 +89,11 @@ export function createMinerVisual(): RobotVisual {
       applySelectionEmissive(accentMat, state.selected);
       applyHoverHighlight(bodyMat, state.hovered, state.selected);
     },
-    tick(deltaSeconds, _telemetry: RobotVisualTelemetry) {
+    tick(deltaSeconds, telemetry: RobotVisualTelemetry) {
+      const spin = wheelRotationRadians(telemetry.travelDistanceMeters, wheelRadius);
+      for (const wheel of wheels) {
+        wheel.rotation.x += spin;
+      }
       drill.rotation.y += deltaSeconds * 2.4;
       pulse += deltaSeconds;
       beaconMat.emissiveIntensity =

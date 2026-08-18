@@ -1,4 +1,9 @@
-import { INTERPOLATION_DELAY_MS, InterpolationBuffer, type MotionSample } from './interpolation-buffer';
+import {
+  INTERPOLATION_DELAY_MS,
+  InterpolationBuffer,
+  MAX_AGE_MS,
+  type MotionSample,
+} from './interpolation-buffer';
 
 const A: MotionSample = {
   recordedAtMs: 1_000,
@@ -24,8 +29,8 @@ function sample(recordedAtMs: number, x = recordedAtMs): MotionSample {
 }
 
 describe('INTERPOLATION_DELAY_MS', () => {
-  it('stays at 1800 ms of presentation lag', () => {
-    expect(INTERPOLATION_DELAY_MS).toBe(1800);
+  it('stays 1s past the 2s telemetry cadence', () => {
+    expect(INTERPOLATION_DELAY_MS).toBe(3000);
   });
 });
 
@@ -85,5 +90,68 @@ describe('InterpolationBuffer', () => {
     }
     expect(buffer.size).toBeLessThanOrEqual(16);
     expect(buffer.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it('interpolates 2s samples without HOLD while a future sample exists', () => {
+    const buffer = new InterpolationBuffer();
+    const t0 = 10_000;
+    buffer.push(sample(t0, 0));
+    buffer.push(sample(t0 + 2_000, 20));
+    const pose = buffer.poseAt(t0 + 500);
+    expect(pose?.position.x).toBeCloseTo(5);
+    expect(pose?.position.x).not.toBe(20);
+    const later = buffer.poseAt(t0 + 1_500);
+    expect(later?.position.x).toBeCloseTo(15);
+  });
+
+  it('inspectPoseAt reports SINGLE_SAMPLE, HOLD, INTERPOLATE, and CLAMP_OLDEST', () => {
+    const buffer = new InterpolationBuffer();
+    expect(buffer.inspectPoseAt(0)).toBeNull();
+    buffer.push(sample(1_000, 0));
+    expect(buffer.inspectPoseAt(1_500)?.mode).toBe('SINGLE_SAMPLE');
+    buffer.push(sample(3_000, 10));
+    expect(buffer.inspectPoseAt(3_000)?.mode).toBe('HOLD');
+    expect(buffer.inspectPoseAt(4_000)?.mode).toBe('HOLD');
+    const mid = buffer.inspectPoseAt(2_000);
+    expect(mid?.mode).toBe('INTERPOLATE');
+    expect(mid?.t).toBeCloseTo(0.5);
+    expect(buffer.inspectPoseAt(500)?.mode).toBe('CLAMP_OLDEST');
+  });
+
+  it('keeps the prior 2s sample needed by a 3000ms delayed renderTime', () => {
+    const buffer = new InterpolationBuffer();
+    buffer.push(sample(0, 0));
+    buffer.push(sample(2_000, 20));
+    buffer.push(sample(4_000, 40));
+    buffer.push(sample(6_000, 60));
+    const renderTime = 6_000 - INTERPOLATION_DELAY_MS;
+    const inspect = buffer.inspectPoseAt(renderTime);
+    expect(inspect?.mode).toBe('INTERPOLATE');
+    expect(inspect?.oldestRecordedAtMs).toBeLessThanOrEqual(renderTime);
+    expect(buffer.poseAt(renderTime)?.position.x).toBeCloseTo(30);
+  });
+
+  it('does not prune the prior sample when 2s cadence has 2400ms jitter', () => {
+    const buffer = new InterpolationBuffer();
+    buffer.push(sample(0, 0));
+    buffer.push(sample(2_400, 24));
+    buffer.push(sample(4_800, 48));
+    const renderTime = 4_800 - INTERPOLATION_DELAY_MS;
+    expect(MAX_AGE_MS).toBeGreaterThanOrEqual(INTERPOLATION_DELAY_MS + 2_400);
+    const inspect = buffer.inspectPoseAt(renderTime);
+    expect(inspect?.mode).toBe('INTERPOLATE');
+    expect(inspect?.mode).not.toBe('CLAMP_OLDEST');
+    const pose = buffer.poseAt(renderTime);
+    expect(pose?.position.x).toBeCloseTo(18);
+    expect(pose?.position.x).not.toBe(24);
+  });
+
+  it('HOLDs only when renderTime is at or after the newest sample', () => {
+    const buffer = new InterpolationBuffer();
+    buffer.push(sample(0, 0));
+    buffer.push(sample(2_000, 20));
+    expect(buffer.inspectPoseAt(1_999)?.mode).toBe('INTERPOLATE');
+    expect(buffer.inspectPoseAt(2_000)?.mode).toBe('HOLD');
+    expect(buffer.poseAt(2_500)?.position.x).toBe(20);
   });
 });

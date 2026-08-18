@@ -1,0 +1,20 @@
+FROM node:24.15.0-bookworm-slim AS build
+WORKDIR /repo
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @prc/persistence-prisma prisma:generate
+RUN pnpm --filter @prc/api... build
+
+FROM node:24.15.0-bookworm-slim
+WORKDIR /repo
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+COPY --from=build /repo /repo
+ENV NODE_ENV=production
+CMD ["node", "apps/api/dist/main.js"]
