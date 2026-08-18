@@ -10,4 +10,5 @@ export * from './outbox-repository';
 export * from './robot-health-repository';
 export * from './alert-repository';
 export * from './processed-message-repository';
+export * from './data-retention-repository';
 export * from './telemetry-producer';

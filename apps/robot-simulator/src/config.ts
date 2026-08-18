@@ -14,7 +14,7 @@ const optionalNumber = z.preprocess(
 export const SimulatorEnvSchema = z.object({
   SIMULATOR_API_BASE_URL: z.string().url().default('http://localhost:3000'),
   SIMULATION_TICK_MS: numberFromEnv(100),
-  TELEMETRY_INTERVAL_MS: numberFromEnv(1000),
+  TELEMETRY_INTERVAL_MS: numberFromEnv(2000),
   SIMULATION_SEED: optionalNumber,
   SIMULATION_WORLD_MIN_X: numberFromEnv(-1000),
   SIMULATION_WORLD_MAX_X: numberFromEnv(1000),

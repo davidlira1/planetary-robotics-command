@@ -1,7 +1,7 @@
 import { lerpHeadingDegrees } from './heading';
 import type { Vec3 } from './fleet-bounds';
 
-/** One telemetry interval (1000 ms) plus extra jitter so sample B is usually present. */
+/** Presentation lag so a later sample is often available; HOLD covers remaining gaps. */
 export const INTERPOLATION_DELAY_MS = 1800;
 const MAX_SAMPLES = 16;
 const MAX_AGE_MS = 4000;

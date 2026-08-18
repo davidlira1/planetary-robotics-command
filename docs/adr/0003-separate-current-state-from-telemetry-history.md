@@ -10,7 +10,7 @@ Persist immutable `RobotTelemetry` history and a separate `RobotCurrentState` (o
 
 ## Consequences
 
-Efficient fleet queries; out-of-order ingestion remains correct; dual writes require a transaction.
+Efficient fleet queries; out-of-order ingestion remains correct; dual writes require a transaction. Raw telemetry history is now bounded (see ADR 0023); `RobotCurrentState` remains the latest authoritative snapshot and is not pruned with history.
 
 ## Alternatives considered
 

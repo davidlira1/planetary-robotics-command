@@ -64,6 +64,24 @@ Raw `RobotCurrentState` stays factual; `RobotHealthState` is interpretation.
 
 Azure Service Bus lives under `@prc/messaging-asb`. Application/health logic depends on `EventPublisher` and repositories only. Kafka/RabbitMQ would be new adapters.
 
+### Telemetry lifecycle and retention
+
+```text
+Robot / simulator sends telemetry (every 2s)
+      ↓
+Ingest API writes history + current state + outbox
+      ↓
+RobotTelemetry history retained temporarily (2 hours, by receivedAt)
+RobotCurrentState remains the latest authoritative snapshot
+      ↓
+Retention Worker removes expired history, published outbox (2h),
+and processed-message rows (24h)
+```
+
+Raw telemetry history is intentionally ephemeral in the demo deployment. Operational current state, health, and alerts are stored separately and are not deleted by this worker. Unpublished outbox rows (`publishedAt IS NULL`) are never deleted. See ADR 0023.
+
+Five robots at a 2-second cadence produce ~216,000 telemetry rows/day without retention; the 2-hour window keeps ~18,000.
+
 ## Layer 3 — simulated robot fleet
 
 ```text
@@ -93,7 +111,7 @@ Cartesian meters: `x` east/west, `z` north/south, `y` altitude (Three.js-friendl
 
 ### Tick vs telemetry / backpressure
 
-Physics uses actual monotonic `deltaTime` (clamped). Telemetry emission is a separate interval that freezes an immutable `TelemetrySample` before send. Each robot allows at most one in-flight send; overlapping intervals skip rather than queue unboundedly. Retries reuse the same snapshot.
+Physics uses actual monotonic `deltaTime` (clamped). Telemetry emission is a separate interval (default 2000 ms) that freezes an immutable `TelemetrySample` before send. Each robot allows at most one in-flight send; overlapping intervals skip rather than queue unboundedly. Retries reuse the same snapshot.
 
 ## Layer 4 — dashboard read models
 

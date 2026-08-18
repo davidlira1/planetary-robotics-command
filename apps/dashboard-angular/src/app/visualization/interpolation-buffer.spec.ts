@@ -24,7 +24,7 @@ function sample(recordedAtMs: number, x = recordedAtMs): MotionSample {
 }
 
 describe('INTERPOLATION_DELAY_MS', () => {
-  it('is one telemetry interval plus extra jitter margin', () => {
+  it('stays at 1800 ms of presentation lag', () => {
     expect(INTERPOLATION_DELAY_MS).toBe(1800);
   });
 });

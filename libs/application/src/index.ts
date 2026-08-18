@@ -9,3 +9,4 @@ export * from './use-cases/list-robot-telemetry';
 export * from './use-cases/evaluate-robot-health';
 export * from './use-cases/get-fleet-snapshot';
 export * from './use-cases/list-alerts';
+export * from './use-cases/cleanup-retained-data';

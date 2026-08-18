@@ -1,5 +1,5 @@
 {
-  "name": "@prc/robot-simulator",
+  "name": "@prc/retention-worker",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,9 +9,10 @@
     "test": "jest --config ./jest.config.js"
   },
   "dependencies": {
-    "@prc/http-telemetry-producer": "workspace:*",
+    "@prc/application": "workspace:*",
+    "@prc/persistence-prisma": "workspace:*",
     "@prc/ports": "workspace:*",
-    "@prc/simulation": "workspace:*",
+    "@prisma/client": "6.19.3",
     "dotenv": "^16.4.7",
     "zod": "^3.24.1"
   },

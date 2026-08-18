@@ -3,7 +3,7 @@
 Enterprise-oriented planetary robotics command platform.
 
 - **Layer 1:** NestJS API, hexagonal domain/application, Prisma/PostgreSQL, telemetry ingest, fleet/telemetry reads
-- **Layer 2:** Transactional outbox, Azure Service Bus (local emulator), outbox publisher, health worker, derived health + transition alerts
+- **Layer 2:** Transactional outbox, Azure Service Bus (local emulator), outbox publisher, health worker, derived health + transition alerts, retention worker
 - **Layer 3:** Robot fleet simulator posting believable telemetry through the public HTTP API
 - **Layer 4:** Dashboard read models — `GET /fleet`, alerts list, health on robot detail
 - **Layer 5:** Angular 22 command dashboard + Three.js world
@@ -27,7 +27,7 @@ pnpm seed
 pnpm build
 ```
 
-Start processes (seven terminals for full pipeline + simulator + live dashboard):
+Start processes (eight terminals for full pipeline + simulator + live dashboard):
 
 ```bash
 pnpm docker:up          # Terminal 1 (if not already running)
@@ -35,8 +35,9 @@ pnpm dev:api            # Terminal 2 — http://localhost:3000/docs
 pnpm dev:outbox         # Terminal 3 — publishes outbox → Service Bus
 pnpm dev:health         # Terminal 4 — consumes health subscription
 pnpm dev:realtime       # Terminal 5 — WebSocket gateway :3001/realtime
-pnpm dev:simulator      # Terminal 6 — fleet telemetry via HTTP
-pnpm dev:dashboard      # Terminal 7 — http://localhost:4200 (proxies /api, /health → :3000 and /realtime WS → :3001)
+pnpm dev:retention      # Terminal 6 — bounds telemetry / published outbox / processed-message growth
+pnpm dev:simulator      # Terminal 7 — fleet telemetry via HTTP (every 2s by default)
+pnpm dev:dashboard      # Terminal 8 — http://localhost:4200 (proxies /api, /health → :3000 and /realtime WS → :3001)
 ```
 
 After editing `infrastructure/docker/servicebus/Config.json`, recreate the Service Bus emulator container so the `realtime` subscription exists (`pnpm docker:down && pnpm docker:up`).
@@ -47,7 +48,15 @@ Local Docker data:
 - `pnpm docker:reset` — **destroys** local Docker volumes and recreates infrastructure (local only)
 - `pnpm dev:reset` — full fresh-development reset: volumes removed, infrastructure restarted, migrations applied, five-robot seed restored
 
-`docker:reset` and `dev:reset` erase telemetry history, current state, health state, alerts, outbox rows, and processed-message rows. Do not use them outside local development.
+`docker:reset` and `dev:reset` erase telemetry history, current state, health state, alerts, outbox rows, and processed-message rows. Do not use them outside local development. The retention worker is different: it continuously deletes expired history on a live database and does not replace `dev:reset`.
+
+Default simulator cadence is one telemetry sample per robot every **2 seconds** (`TELEMETRY_INTERVAL_MS=2000`). Physics still ticks at 100 ms. Retention (defaults):
+
+- raw telemetry — 2 hours (~18,000 rows at 5 robots × 2s; ~216,000 rows/day without retention)
+- published outbox — 2 hours
+- processed-message idempotency — 24 hours
+
+Unpublished outbox rows are never deleted. Current state, health, and alerts are not pruned by retention.
 
 The dashboard loads `/fleet` and `/alerts` once, then applies `robot.state.updated` over the live link. Header **API CONNECTED** is REST reachability; **LIVE LINK** is the WebSocket. There is no polling. Reconnect re-fetches `/fleet` and merges by `recordedAt`.
 
@@ -56,6 +65,7 @@ Or one-shot setup helper: `pnpm setup` then the `dev:*` commands.
 ### Simulator demo notes
 
 - Default fleet: `D-04`, `H-17`, `W-08`, `M-12`, `S-03` (matches seed IDs; simulator does not import Prisma seed code).
+- Telemetry emission: every 2 seconds (`TELEMETRY_INTERVAL_MS`). Simulation physics tick stays 100 ms.
 - Optional threshold scenario: set `SIM_D04_BATTERY=19` in `.env` to start the drone near the battery WARNING band.
 - Deterministic runs: set `SIMULATION_SEED=12345`.
 - Debug tick skips: `SIMULATOR_DEBUG=1`.
