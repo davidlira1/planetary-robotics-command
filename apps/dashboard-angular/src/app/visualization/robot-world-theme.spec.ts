@@ -10,6 +10,7 @@ describe('robotWorldTheme', () => {
     expect(robotWorldTheme.critical).toBe(hexToThreeColor(prcColors.statusCritical));
     expect(robotWorldTheme.muted).toBe(hexToThreeColor(prcColors.textMuted));
     expect(robotWorldTheme.background).toBe(hexToThreeColor(prcColors.bgWorld));
+    expect(robotWorldTheme.graphite).toBe(hexToThreeColor(prcColors.bgMeterTrack));
   });
 
   it('rejects invalid hex', () => {

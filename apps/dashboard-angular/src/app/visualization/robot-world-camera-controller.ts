@@ -37,8 +37,11 @@ export class RobotWorldCameraController {
     }
     const alpha = exponentialSmoothingAlpha(CAMERA_SMOOTHING, deltaSeconds);
     lerpVec(camera.position, this.desiredPosition, alpha);
-    copyVec(controls.target, this.desiredTarget);
-    if (remainingError(camera.position, this.desiredPosition) < SETTLE_EPSILON) {
+    lerpVec(controls.target, this.desiredTarget, alpha);
+    if (
+      remainingError(camera.position, this.desiredPosition) < SETTLE_EPSILON &&
+      remainingError(controls.target, this.desiredTarget) < SETTLE_EPSILON
+    ) {
       copyVec(camera.position, this.desiredPosition);
       copyVec(controls.target, this.desiredTarget);
       this.active = false;

@@ -7,12 +7,13 @@ Three.js must render fleet positions without leaking WebGL into feature facades 
 ## Decision
 
 - `FleetFacade` never imports Three.js or `RobotWorld`.
-- `RobotWorldHostComponent` is the only Angular bridge: maps fleet → `RobotWorldRobot` (omit `currentState === null`), syncs selection, resizes, and routes raycast clicks back via `FleetFacade.selectRobot` + `InspectionFacade.openAsset()`.
+- `RobotWorldHostComponent` is the only Angular bridge: maps fleet → `RobotWorldRobot` (omit `currentState === null`), syncs selection, resizes, and routes raycast clicks back via `FleetFacade.selectRobot` + `RobotWorld.focusRobot` + `InspectionFacade.openAsset()`. Fleet-list selection does not auto-focus the camera (FOCUS SELECTED remains a manual action). Mapping may pass presentation inputs such as `velocityMetersPerSecond`; interpolated or predicted coordinates never write back.
 - The host depends on `RobotWorld` through `ROBOT_WORLD`. `provideRobotWorld()` constructs `ThreeRobotWorld`. The host does not import the concrete renderer.
-- `ThreeRobotWorld` owns scene, camera, renderer, OrbitControls, raycaster, terrain, and a `Map<id, RobotSceneObject>`.
-- Position interpolation is presentation-only and frame-rate-independent: `tick(deltaSeconds)` uses exponential smoothing. Interpolated positions never write back to Angular.
-- Camera framing stays inside Three.js. The first positioned `syncFleet` auto-fits once, and only after initialize + a positioned snapshot. Fit uses a bounding sphere from robot positions (not terrain). Fog starts beyond the far side of that sphere so robots are not washed out. `fitFleet()` and `focusRobot(id)` animate camera + orbit target while preserving the current viewing direction. Selection does not auto-focus the camera.
-- Terrain is a dark plane sized from current fleet bounds (plus a minimum). The decorative ring is not rendered; it had no backend meaning.
+- `ThreeRobotWorld` owns scene, camera, renderer, CSS2D overlay, OrbitControls, raycaster, terrain, the BASE origin marker, and a `Map<id, RobotSceneObject>`.
+- Motion is presentation-only and frame-rate-independent: `tick(deltaSeconds)` short-horizon dead-reckons from heading + scalar speed (capped at 1.25s), then exponential-smooths toward that target. Interpolated / predicted positions never write back to Angular.
+- Camera framing stays inside Three.js. The first positioned `syncFleet` auto-fits once, and only after initialize + a positioned snapshot. Overview and FIT FLEET use a perspective-frustum fit along the current viewing direction (bounding-sphere fit is fallback when the camera basis is degenerate). Fog still starts beyond the far side of the fleet bounding sphere so robots are not washed out. `fitFleet()` animates camera + orbit target while preserving the current viewing direction. `focusRobot(id)` eases camera position and the orbit target from the current pose toward the rendered robot along the current camera-to-robot ray; there is no target or position snap. A world click auto-focuses the selected robot; fleet-list selection does not.
+- Terrain is a dark plane sized from current fleet bounds (plus a minimum). Sparse local marks and a BASE pylon sit at the documented simulator origin `(0,0,0)`; there is no full-screen grid.
+- Robot labels are CSS2D elements created by the renderer (not Angular components inside scene objects).
 - Raycast selection walks `Object3D.parent` until it finds a string `userData.robotId`.
 - The app is zoneless (`provideZonelessChangeDetection`, no `zone.js`). Signal writes from the click callback schedule change detection. `NgZone.run` / `runOutsideAngular` are unused.
 
@@ -22,4 +23,4 @@ Visualization can later accept incremental target updates without changing facad
 
 ## Alternatives considered
 
-Injecting the world into `FleetFacade` — rejected. Rebuilding the scene on every sync — rejected. Constructing `ThreeRobotWorld` inside the host — rejected so the host stays on the `RobotWorld` boundary. Per-frame lerp constants — rejected because smoothing speed would depend on FPS. Auto-fitting on every fleet update — rejected so future realtime motion does not yank the camera.
+Injecting the world into `FleetFacade` — rejected. Rebuilding the scene on every sync — rejected. Constructing `ThreeRobotWorld` inside the host — rejected so the host stays on the `RobotWorld` boundary. Per-frame lerp constants — rejected because smoothing speed would depend on FPS. Auto-fitting on every fleet update — rejected so realtime motion does not yank the camera. Bounding-sphere overview fit — superseded for production framing because a flat fleet left too much empty margin; kept as degenerate-basis fallback.

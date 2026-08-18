@@ -7,6 +7,7 @@ function robot(id: string, position: RobotWorldRobot['position']): RobotWorldRob
     type: 'DRONE',
     position,
     headingDegrees: 0,
+    velocityMetersPerSecond: 0,
     healthStatus: null,
   };
 }

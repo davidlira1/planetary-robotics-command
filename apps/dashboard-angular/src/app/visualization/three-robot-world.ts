@@ -1,15 +1,18 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+import { dollyInspectionPose } from './camera-dolly';
 import {
   cameraPositionFromTarget,
+  calculateTightFleetCameraDistance,
   DEFAULT_VIEW_OFFSET,
-  fleetFitDistance,
-  inspectionBounds,
-  MIN_FIT_SPAN,
+  MARKER_RADIUS,
+  MIN_FLEET_OVERVIEW_DISTANCE,
+  MIN_INSPECTION_DISTANCE,
   normalizeDirection,
 } from './camera-fit';
 import { findAncestorRobotId } from './find-ancestor-robot-id';
-import { boundingSphereRadius, calculateFleetBounds, type FleetBounds, type Vec3 } from './fleet-bounds';
+import { boundingSphereRadius, calculateFleetBounds, calculatePositionBounds, type FleetBounds, type Vec3 } from './fleet-bounds';
 import { InitialFitGate } from './initial-fit-gate';
 import { applyRendererSize } from './renderer-size';
 import { RobotSceneObject } from './robot-scene-object';
@@ -17,20 +20,23 @@ import { syncRegistry } from './robot-registry';
 import { RobotWorldCameraController } from './robot-world-camera-controller';
 import { robotWorldTheme } from './robot-world-theme';
 import type { RobotWorld, RobotWorldRobot } from './robot-world';
+import { createWorldDecorations } from './world-decorations';
 
-const MIN_DISTANCE = 40;
+const MIN_DISTANCE = 20;
 const MIN_TERRAIN_SIZE = 240;
 const TERRAIN_PADDING = 2.4;
 const DEFAULT_MAX_DISTANCE = 320;
 
 export class ThreeRobotWorld implements RobotWorld {
   private renderer: THREE.WebGLRenderer | null = null;
+  private labelRenderer: CSS2DRenderer | null = null;
   private scene: THREE.Scene | null = null;
   private camera: THREE.PerspectiveCamera | null = null;
   private controls: OrbitControls | null = null;
   private raycaster: THREE.Raycaster | null = null;
   private clock: THREE.Clock | null = null;
   private ground: THREE.Mesh | null = null;
+  private decorations: { group: THREE.Group; dispose: () => void } | null = null;
   private readonly pointer = new THREE.Vector2();
   private readonly robots = new Map<string, RobotSceneObject>();
   private readonly fitGate = new InitialFitGate();
@@ -38,7 +44,10 @@ export class ThreeRobotWorld implements RobotWorld {
   private selectedId: string | null = null;
   private pendingRobots: readonly RobotWorldRobot[] | null = null;
   private lastPositionedRobots: readonly RobotWorldRobot[] = [];
-  private lastFitBounds: FleetBounds | null = null;
+  private lastFitPositions: Vec3[] = [];
+  private lastFitTarget: Vec3 | null = null;
+  private lastFitMinDistance = MIN_FLEET_OVERVIEW_DISTANCE;
+  private lastFitMarkerRadius = MARKER_RADIUS;
   private needsAspectRefit = false;
   private frame = 0;
   private onRobotSelected: ((id: string) => void) | null = null;
@@ -56,7 +65,8 @@ export class ThreeRobotWorld implements RobotWorld {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(robotWorldTheme.background);
-    scene.fog = new THREE.Fog(robotWorldTheme.background, 180, 620);
+    // Diagnostic: isolate whether FOCUS SELECTED "haze" is fog, not camera motion.
+    scene.fog = null;
 
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 2000);
     camera.position.set(DEFAULT_VIEW_OFFSET.x, DEFAULT_VIEW_OFFSET.y, DEFAULT_VIEW_OFFSET.z);
@@ -64,6 +74,14 @@ export class ThreeRobotWorld implements RobotWorld {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     applyRendererSize(renderer, width, height, window.devicePixelRatio);
     host.appendChild(renderer.domElement);
+
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(width, height);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.inset = '0';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    labelRenderer.domElement.style.zIndex = '1';
+    host.appendChild(labelRenderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -73,10 +91,14 @@ export class ThreeRobotWorld implements RobotWorld {
     controls.maxDistance = DEFAULT_MAX_DISTANCE;
     controls.target.set(0, 0, 0);
 
-    scene.add(new THREE.AmbientLight(robotWorldTheme.lightAmbient, 0.55));
-    const key = new THREE.DirectionalLight(robotWorldTheme.lightKey, 0.85);
+    const hemi = new THREE.HemisphereLight(robotWorldTheme.lightAmbient, robotWorldTheme.graphiteDark, 0.42);
+    scene.add(hemi);
+    const key = new THREE.DirectionalLight(robotWorldTheme.lightKey, 0.9);
     key.position.set(40, 80, 20);
     scene.add(key);
+    const rim = new THREE.DirectionalLight(robotWorldTheme.accent, 0.22);
+    rim.position.set(-50, 30, -40);
+    scene.add(rim);
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
@@ -91,11 +113,16 @@ export class ThreeRobotWorld implements RobotWorld {
     ground.scale.set(MIN_TERRAIN_SIZE, MIN_TERRAIN_SIZE, 1);
     scene.add(ground);
 
+    const decorations = createWorldDecorations();
+    scene.add(decorations.group);
+
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
+    this.labelRenderer = labelRenderer;
     this.controls = controls;
     this.ground = ground;
+    this.decorations = decorations;
     this.raycaster = new THREE.Raycaster();
     renderer.domElement.addEventListener('click', this.onClick);
     if (this.pendingRobots) {
@@ -133,7 +160,7 @@ export class ThreeRobotWorld implements RobotWorld {
     const bounds = calculateFleetBounds(this.lastPositionedRobots);
     this.syncTerrain(bounds);
     if (bounds && this.fitGate.shouldFit(true)) {
-      this.applyFraming(bounds, false);
+      this.applyFraming(this.positionedCoords(), bounds.center, false, MIN_FLEET_OVERVIEW_DISTANCE);
       this.fitGate.markFitted();
     }
   }
@@ -146,24 +173,37 @@ export class ThreeRobotWorld implements RobotWorld {
   }
 
   fitFleet(): void {
-    const bounds = calculateFleetBounds(this.lastPositionedRobots);
+    const positions = this.positionedCoords();
+    const bounds = calculatePositionBounds(positions);
     if (!bounds) {
       return;
     }
-    this.applyFraming(bounds, true);
+    this.applyFraming(positions, bounds.center, true, MIN_FLEET_OVERVIEW_DISTANCE);
   }
 
   focusRobot(robotId: string): void {
+    if (!this.camera || !this.controls) {
+      return;
+    }
     const object = this.robots.get(robotId);
     if (!object) {
       return;
     }
-    const target = {
-      x: object.targetPosition.x,
-      y: object.targetPosition.y,
-      z: object.targetPosition.z,
+
+    const startCameraPosition = this.camera.position.clone();
+    const startControlsTarget = this.controls.target.clone();
+    const endTarget = {
+      x: object.renderedPosition.x,
+      y: object.renderedPosition.y,
+      z: object.renderedPosition.z,
     };
-    this.applyFraming(inspectionBounds(target), true, target);
+    const pose = dollyInspectionPose(startCameraPosition, endTarget, MIN_INSPECTION_DISTANCE);
+    const startToTarget = startCameraPosition.distanceTo(startControlsTarget);
+    const startToRobot = startCameraPosition.distanceTo(
+      new THREE.Vector3(endTarget.x, endTarget.y, endTarget.z),
+    );
+    this.controls.maxDistance = Math.max(this.controls.maxDistance, startToTarget, startToRobot);
+    this.cameraController.begin(pose.position, pose.target);
   }
 
   resize(width: number, height: number): void {
@@ -174,9 +214,16 @@ export class ThreeRobotWorld implements RobotWorld {
     this.camera.aspect = width / Math.max(height, 1);
     this.camera.updateProjectionMatrix();
     applyRendererSize(this.renderer, width, height, window.devicePixelRatio);
-    if (usable && this.needsAspectRefit && this.lastFitBounds) {
+    this.labelRenderer?.setSize(width, height);
+    if (usable && this.needsAspectRefit && this.lastFitPositions.length && this.lastFitTarget) {
       this.needsAspectRefit = false;
-      this.applyFraming(this.lastFitBounds, false);
+      this.applyFraming(
+        this.lastFitPositions,
+        this.lastFitTarget,
+        false,
+        this.lastFitMinDistance,
+        this.lastFitMarkerRadius,
+      );
     }
   }
 
@@ -198,23 +245,35 @@ export class ThreeRobotWorld implements RobotWorld {
       }
       this.scene?.remove(this.ground);
     }
+    if (this.decorations) {
+      this.scene?.remove(this.decorations.group);
+      this.decorations.dispose();
+    }
     this.controls?.dispose();
     this.renderer?.dispose();
     this.renderer?.domElement.remove();
+    this.labelRenderer?.domElement.remove();
     this.renderer = null;
+    this.labelRenderer = null;
     this.scene = null;
     this.camera = null;
     this.controls = null;
     this.raycaster = null;
     this.clock = null;
     this.ground = null;
+    this.decorations = null;
     this.onRobotSelected = null;
     this.pendingRobots = null;
     this.lastPositionedRobots = [];
-    this.lastFitBounds = null;
+    this.lastFitPositions = [];
+    this.lastFitTarget = null;
     this.needsAspectRefit = false;
     this.fitGate.reset();
     this.cameraController.active = false;
+  }
+
+  private positionedCoords(): Vec3[] {
+    return this.lastPositionedRobots.flatMap((robot) => (robot.position ? [robot.position] : []));
   }
 
   private viewDirection(): Vec3 {
@@ -242,19 +301,34 @@ export class ThreeRobotWorld implements RobotWorld {
     this.camera.updateProjectionMatrix();
   }
 
-  private applyFraming(bounds: FleetBounds, animate: boolean, target = bounds.center): void {
+  private applyFraming(
+    positions: readonly Vec3[],
+    target: Vec3,
+    animate: boolean,
+    minDistance: number,
+    markerRadius = MARKER_RADIUS,
+  ): void {
     if (!this.camera || !this.controls) {
       return;
     }
-    this.lastFitBounds = bounds;
+    const bounds = calculatePositionBounds(positions);
+    if (!bounds) {
+      return;
+    }
+    this.lastFitPositions = [...positions];
+    this.lastFitTarget = target;
+    this.lastFitMinDistance = minDistance;
+    this.lastFitMarkerRadius = markerRadius;
     if (this.camera.aspect < 0.05 || this.camera.aspect > 40) {
       this.needsAspectRefit = true;
     }
-    const radius = Math.max(boundingSphereRadius(bounds), MIN_FIT_SPAN / 2);
-    const required = fleetFitDistance(
-      bounds,
+    const radius = Math.max(boundingSphereRadius(bounds), markerRadius);
+    const required = calculateTightFleetCameraDistance(
+      positions,
+      this.viewDirection(),
       THREE.MathUtils.degToRad(this.camera.fov),
       this.camera.aspect,
+      { minDistance, markerRadius },
     );
     this.applyViewLimits(required, radius);
     const distance = Math.min(
@@ -295,6 +369,7 @@ export class ThreeRobotWorld implements RobotWorld {
     }
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
+      this.labelRenderer?.render(this.scene, this.camera);
     }
   };
 

@@ -46,6 +46,7 @@ describe('mapFleetToWorldRobots', () => {
         type: 'DRONE',
         position: { x: 1, y: 2, z: 3 },
         headingDegrees: 90,
+        velocityMetersPerSecond: 1,
         healthStatus: 'WARNING',
       },
     ]);

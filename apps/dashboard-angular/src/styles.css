@@ -56,3 +56,64 @@ prc-root {
   color: var(--prc-text-muted);
   font-weight: 400;
 }
+
+.prc-robot-label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--prc-text-muted);
+  font: 10px var(--prc-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 6px rgba(0, 4, 8, 0.85);
+  opacity: 0.82;
+}
+
+.prc-robot-label__id {
+  color: var(--prc-text-primary);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+.prc-robot-label__type {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+}
+
+.prc-robot-label__pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--prc-text-muted);
+  box-shadow: 0 0 6px currentColor;
+}
+
+.prc-robot-label__pip--healthy {
+  background: var(--prc-status-normal);
+}
+
+.prc-robot-label__pip--warning {
+  background: var(--prc-status-warning);
+}
+
+.prc-robot-label__pip--critical {
+  background: var(--prc-status-critical);
+}
+
+.prc-robot-label--selected {
+  opacity: 1;
+}
+
+.prc-robot-label--selected .prc-robot-label__id {
+  color: var(--prc-accent-primary);
+}
+
+.prc-robot-label--base {
+  opacity: 0.7;
+}
+
+.prc-robot-label--base .prc-robot-label__id {
+  color: var(--prc-world-ring, var(--prc-accent-primary));
+}

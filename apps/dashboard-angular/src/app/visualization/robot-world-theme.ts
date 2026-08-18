@@ -10,6 +10,8 @@ export function hexToThreeColor(hex: string): number {
 
 /** Renderer-specific numeric colors derived from @prc/design-system. */
 export const robotWorldTheme = {
+  graphite: hexToThreeColor(prcColors.bgMeterTrack),
+  graphiteDark: hexToThreeColor(prcColors.bgWorldGround),
   accent: hexToThreeColor(prcColors.accentPrimary),
   normal: hexToThreeColor(prcColors.statusNormal),
   warning: hexToThreeColor(prcColors.statusWarning),

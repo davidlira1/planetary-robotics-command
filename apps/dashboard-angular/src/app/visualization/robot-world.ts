@@ -20,6 +20,7 @@ export interface RobotWorldRobot {
   type: RobotWorldType;
   position: { x: number; y: number; z: number } | null;
   headingDegrees: number;
+  velocityMetersPerSecond: number;
   healthStatus: 'HEALTHY' | 'WARNING' | 'CRITICAL' | null;
 }
 

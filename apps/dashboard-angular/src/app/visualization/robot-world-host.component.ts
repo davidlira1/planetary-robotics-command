@@ -13,6 +13,7 @@ import { InspectionFacade } from '../features/inspection/state/inspection-facade
 import { mapFleetToWorldRobots } from './map-fleet-to-world';
 import { provideRobotWorld } from './provide-robot-world';
 import { ROBOT_WORLD } from './robot-world.token';
+import { focusSelectedRobot, inspectWorldRobot } from './inspect-world-robot';
 
 @Component({
   selector: 'prc-robot-world-host',
@@ -58,20 +59,20 @@ export class RobotWorldHostComponent implements OnDestroy {
   }
 
   onFocusSelected(): void {
-    const id = this.fleet.selectedRobotId();
-    if (!id || !this.canFocusSelected()) {
-      return;
-    }
-    this.world.focusRobot(id);
+    focusSelectedRobot(this.fleet.selectedRobotId(), this.canFocusSelected(), (id) =>
+      this.world.focusRobot(id),
+    );
   }
 
   private boot(): void {
     const host = this.host().nativeElement;
     this.world.initialize(host, {
-      onRobotSelected: (id) => {
-        this.fleet.selectRobot(id);
-        this.inspection.openAsset();
-      },
+      onRobotSelected: (id) =>
+        inspectWorldRobot(id, {
+          selectRobot: (robotId) => this.fleet.selectRobot(robotId),
+          focusRobot: (robotId) => this.world.focusRobot(robotId),
+          openAsset: () => this.inspection.openAsset(),
+        }),
     });
     this.world.syncFleet(mapFleetToWorldRobots(this.fleet.robots()));
     this.world.setSelectedRobot(this.fleet.selectedRobotId());

@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { aimCamera } from './camera-aim';
-import { cameraPositionFromTarget, fleetFitDistance, normalizeDirection } from './camera-fit';
+import {
+  cameraPositionFromTarget,
+  calculateTightFleetCameraDistance,
+  MIN_FLEET_OVERVIEW_DISTANCE,
+  normalizeDirection,
+} from './camera-fit';
 import { calculateFleetBounds } from './fleet-bounds';
 import { RobotSceneObject } from './robot-scene-object';
 import type { RobotWorldRobot } from './robot-world';
@@ -9,7 +14,14 @@ const D04 = { x: 140.2, y: 11.8, z: 72.4 };
 const VIEWPORT = { width: 1280, height: 720 };
 
 function positioned(id: string, position: { x: number; y: number; z: number }): RobotWorldRobot {
-  return { id, type: 'DRONE', position, headingDegrees: 0, healthStatus: null };
+  return {
+    id,
+    type: 'DRONE',
+    position,
+    headingDegrees: 0,
+    velocityMetersPerSecond: 0,
+    healthStatus: null,
+  };
 }
 
 function fittedCamera(robots: RobotWorldRobot[]) {
@@ -25,7 +37,14 @@ function fittedCamera(robots: RobotWorldRobot[]) {
     y: camera.position.y - controls.target.y,
     z: camera.position.z - controls.target.z,
   });
-  const distance = fleetFitDistance(bounds, THREE.MathUtils.degToRad(camera.fov), camera.aspect);
+  const positions = robots.flatMap((robot) => (robot.position ? [robot.position] : []));
+  const distance = calculateTightFleetCameraDistance(
+    positions,
+    direction,
+    THREE.MathUtils.degToRad(camera.fov),
+    camera.aspect,
+    { minDistance: MIN_FLEET_OVERVIEW_DISTANCE },
+  );
   const position = cameraPositionFromTarget(bounds.center, direction, distance);
   aimCamera(camera, controls, position, bounds.center);
   return { bounds, camera, controls, distance, position };
@@ -62,9 +81,9 @@ describe('single-robot framing invariant', () => {
     expect(object.group.position.x).toBeCloseTo(D04.x);
     expect(object.group.position.y).toBeCloseTo(D04.y);
     expect(object.group.position.z).toBeCloseTo(D04.z);
-    expect(object.targetPosition.x).toBeCloseTo(bounds!.center.x);
-    expect(object.targetPosition.y).toBeCloseTo(bounds!.center.y);
-    expect(object.targetPosition.z).toBeCloseTo(bounds!.center.z);
+    expect(object.authoritativePosition.x).toBeCloseTo(bounds!.center.x);
+    expect(object.authoritativePosition.y).toBeCloseTo(bounds!.center.y);
+    expect(object.authoritativePosition.z).toBeCloseTo(bounds!.center.z);
   });
 
   it('projects D-04 to the extreme bottom-right when the camera still looks at the origin', () => {
@@ -98,7 +117,7 @@ describe('single-robot framing invariant', () => {
   });
 });
 
-describe('five-robot bounding-sphere framing', () => {
+describe('five-robot frustum framing', () => {
   const fleet = [
     positioned('D-04', { x: 50, y: 60, z: -40 }),
     positioned('H-17', { x: -120, y: 0, z: 80 }),

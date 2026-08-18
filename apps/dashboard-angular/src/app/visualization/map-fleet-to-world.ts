@@ -12,6 +12,7 @@ export function mapFleetToWorldRobots(robots: readonly FleetRobot[]): RobotWorld
         type: resolveRobotWorldType(robot.type),
         position: robot.currentState.position,
         headingDegrees: robot.currentState.headingDegrees,
+        velocityMetersPerSecond: robot.currentState.velocityMetersPerSecond,
         healthStatus: robot.health?.status ?? null,
       },
     ];

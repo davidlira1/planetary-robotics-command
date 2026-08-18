@@ -147,7 +147,7 @@ ThreeRobotWorld
 
 Layer 5 loads `GET /api/v1/fleet` once and `GET /api/v1/alerts?status=OPEN&limit=50` once, then keeps robot current-state fresh over WebSocket (Layer 6). Facades expose HTTP loads as `Observable<void>` workflows; the shell subscribes with `takeUntilDestroyed`. Fleet, alerts, inspection, and realtime facades are shell-scoped. There is no polling. Header shows **API CONNECTED** (REST reachability) and **LIVE LINK** (WebSocket state) separately.
 
-`InspectionFacade` is presentation-only (`openAsset()` / `openAlert(id)` / `close()`). It owns drawer mode and selected alert id, not selected robot identity. Fleet row click selects only. 3D click selects via `FleetFacade` then `openAsset()`. Alert click selects the robot and opens alert detail. Facade state is read-only to consumers.
+`InspectionFacade` is presentation-only (`openAsset()` / `openAlert(id)` / `close()`). It owns drawer mode and selected alert id, not selected robot identity. Closing the drawer does not clear fleet selection. Fleet row click selects only. 3D click selects via `FleetFacade`, focuses the camera with `focusRobot`, then `openAsset()`. Alert click selects the robot and opens alert detail. The inspector is a non-modal right-side panel: the dashboard is not `inert` and is not blurred. Facade state is read-only to consumers.
 
 Responsive modes: full command (≥1440px), compact command (1024–1439px), focus (<1024px: fleet + world primary; telemetry/alerts via the drawer). Desktop/laptop-first.
 
@@ -171,7 +171,7 @@ robot.telemetry.received
                                     ↓
                               FleetFacade patch
                                     ↓
-                         existing Three.js interpolation
+                         presentation-only Three.js motion
 ```
 
 REST answers "what is true when I connect / reconnect." The socket answers "what changed after I connected." `POST /telemetry` does not talk to WebSockets. The gateway does not write Postgres.

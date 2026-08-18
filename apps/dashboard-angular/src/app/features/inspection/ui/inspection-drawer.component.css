@@ -1,34 +1,22 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--prc-overlay);
-  backdrop-filter: blur(3px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--prc-motion-standard);
-  z-index: 10;
-}
-
-.overlay.open {
-  opacity: 1;
-  pointer-events: auto;
-}
-
 .drawer {
-  position: absolute;
+  position: fixed;
   right: 0;
   top: 0;
   height: 100%;
   width: min(520px, 92vw);
   background: var(--prc-bg-drawer);
   border-left: 1px solid var(--prc-border-drawer);
+  box-shadow: -18px 0 40px rgba(0, 4, 8, 0.45);
   transform: translateX(100%);
   transition: transform var(--prc-motion-deliberate) ease;
   padding: 28px;
+  z-index: 10;
+  pointer-events: none;
 }
 
-.open .drawer {
+.drawer.open {
   transform: none;
+  pointer-events: auto;
 }
 
 .close {

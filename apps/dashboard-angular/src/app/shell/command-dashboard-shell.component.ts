@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActiveAlertsComponent } from '../features/alerts/ui/active-alerts.component';
 import { AlertsFacade } from '../features/alerts/state/alerts-facade';
@@ -33,10 +33,8 @@ import { RobotWorldHostComponent } from '../visualization/robot-world-host.compo
 export class CommandDashboardShellComponent implements OnInit {
   private readonly fleet = inject(FleetFacade);
   private readonly alerts = inject(AlertsFacade);
-  private readonly inspection = inject(InspectionFacade);
   private readonly realtime = inject(RealtimeFacade);
   private readonly destroyRef = inject(DestroyRef);
-  readonly inspectionOpen = computed(() => this.inspection.mode() !== null);
 
   ngOnInit(): void {
     this.fleet.loadFleet().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();

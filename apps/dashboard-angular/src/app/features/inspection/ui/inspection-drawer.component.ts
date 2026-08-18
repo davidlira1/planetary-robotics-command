@@ -78,39 +78,6 @@ export class InspectionDrawerComponent {
     });
   }
 
-  onBackdrop(event: MouseEvent): void {
-    if (event.target === event.currentTarget) {
-      this.inspection.close();
-    }
-  }
-
-  onDrawerKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Tab' || !this.open()) {
-      return;
-    }
-    const root = (event.currentTarget as HTMLElement | null) ?? null;
-    if (!root) {
-      return;
-    }
-    const focusable = [
-      ...root.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      ),
-    ].filter((element) => !element.hasAttribute('disabled'));
-    if (focusable.length === 0) {
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.open()) {
