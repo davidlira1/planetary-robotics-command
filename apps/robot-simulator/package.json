@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
-    "start:dev": "ts-node --transpile-only src/main.ts",
+    "start:dev": "pnpm --filter @prc/simulation build && ts-node --transpile-only src/main.ts",
     "test": "jest --config ./jest.config.js"
   },
   "dependencies": {

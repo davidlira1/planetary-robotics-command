@@ -273,14 +273,42 @@ describe('fleet config', () => {
       ['D-04', 'D-09', 'H-17', 'H-22', 'M-12', 'M-27', 'S-03', 'S-11', 'W-08', 'W-14'].sort(),
     );
     expect(new Set(ids).size).toBe(10);
+    const byType = new Map<RobotType, number>();
     for (const robot of DEFAULT_FLEET) {
       expect(Object.values(RobotType)).toContain(robot.type);
+      byType.set(robot.type, (byType.get(robot.type) ?? 0) + 1);
+    }
+    for (const type of Object.values(RobotType)) {
+      expect(byType.get(type)).toBe(2);
     }
   });
 
   it('applies battery overrides for threshold demos', () => {
     const robot = createSimulatedRobot(DEFAULT_FLEET[0]!, { 'D-04': 19 });
     expect(robot.batteryPercent).toBe(19);
+  });
+
+  it('emits telemetry for every DEFAULT_FLEET robot', async () => {
+    const sent: string[] = [];
+    const producer: TelemetryProducer = {
+      async send(sample) {
+        sent.push(sample.robotId);
+        return { status: 'accepted' };
+      },
+    };
+    const engine = new SimulationEngine(producer, silentLogger, {
+      tickMs: 10_000,
+      telemetryIntervalMs: 10_000,
+      seed: 1,
+      wallClock: fixedWallClock('2026-08-14T20:00:00.000Z'),
+      idGenerator: sequenceIdGenerator(DEFAULT_FLEET.map((_, i) => `id${i}`)),
+    });
+    expect(engine.robots.map((r) => r.robotId)).toEqual(DEFAULT_FLEET.map((r) => r.robotId));
+    void engine.emitTelemetryOnce();
+    await Promise.resolve();
+    expect([...sent].sort()).toEqual([...DEFAULT_FLEET.map((r) => r.robotId)].sort());
+    expect(sent).toHaveLength(DEFAULT_FLEET.length);
+    await engine.stop();
   });
 });
 

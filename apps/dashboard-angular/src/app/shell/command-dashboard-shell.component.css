@@ -18,9 +18,11 @@
   those were approximations of this stack.
 */
 prc-fleet-assets {
-  min-height: calc(
+  height: calc(
     var(--prc-space-world-height) + var(--prc-space-gap) + var(--prc-space-metrics-height)
   );
+  min-height: 0;
+  overflow: hidden;
 }
 
 .center {
@@ -53,9 +55,6 @@ prc-fleet-assets {
 @media (max-width: 1023px) {
   .main {
     grid-template-columns: var(--prc-space-rail-fleet-compact) minmax(0, 1fr);
-  }
-  prc-fleet-assets {
-    min-height: 0;
   }
   .right {
     display: none;

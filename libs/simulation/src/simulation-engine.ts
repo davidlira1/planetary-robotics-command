@@ -76,6 +76,9 @@ export class SimulationEngine {
     this.logger.info('Simulation engine created', {
       operation: 'SimulationEngine',
       robotCount: this.robots.length,
+      robotIds: this.robots.map((r) => r.robotId),
+      defaultFleetCount: DEFAULT_FLEET.length,
+      defaultFleetIds: DEFAULT_FLEET.map((r) => r.robotId),
       seed,
       tickMs: this.tickMs,
       telemetryIntervalMs: this.telemetryIntervalMs,
@@ -148,6 +151,7 @@ export class SimulationEngine {
 
     this.logger.info('Simulation started', {
       operation: 'SimulationEngine',
+      telemetryEmittingIds: this.robots.map((r) => r.robotId),
     });
   }
 

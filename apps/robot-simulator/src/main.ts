@@ -2,7 +2,7 @@ import { config as loadEnv } from 'dotenv';
 import { resolve } from 'path';
 import { HttpTelemetryProducer } from '@prc/http-telemetry-producer';
 import { Logger } from '@prc/ports';
-import { SimulationEngine } from '@prc/simulation';
+import { DEFAULT_FLEET, SimulationEngine } from '@prc/simulation';
 import { batteryOverridesFromEnv, loadSimulatorConfig } from './config';
 
 loadEnv({ path: resolve(__dirname, '../../../.env') });
@@ -80,6 +80,9 @@ async function main() {
     apiBaseUrl: env.SIMULATOR_API_BASE_URL,
     tickMs: env.SIMULATION_TICK_MS,
     telemetryIntervalMs: env.TELEMETRY_INTERVAL_MS,
+    defaultFleetIds: DEFAULT_FLEET.map((r) => r.robotId),
+    constructedIds: engine.robots.map((r) => r.robotId),
+    telemetryEmittingIds: engine.robots.map((r) => r.robotId),
   });
 }
 
