@@ -4,12 +4,13 @@ set -euo pipefail
 source "$(cd "$(dirname "$0")" && pwd)/prod-common.sh"
 ensure_env_prod
 
-"${COMPOSE[@]}" build
+# seed is on the init profile; a default compose build never rebuilds prc-prod-seed
+"${COMPOSE[@]}" --profile init build
 "${COMPOSE[@]}" up -d postgres rabbitmq
 wait_healthy prc-prod-postgres
 wait_healthy prc-prod-rabbitmq
 "${COMPOSE[@]}" run --rm migrate
-"${COMPOSE[@]}" --profile init run --rm seed
+"${COMPOSE[@]}" --profile init run --rm --build seed
 "${COMPOSE[@]}" up -d
 
 echo ""
