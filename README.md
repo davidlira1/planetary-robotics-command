@@ -83,8 +83,8 @@ pnpm prod:reset                  # DESTROYS prc_prod_* volumes, then re-inits
 
 | Command | Meaning |
 |---------|---------|
-| `prod:init` | First-time create. Build, start Postgres/RabbitMQ, migrate, **seed** (idempotent upsert), start the stack. Never deletes volumes. |
-| `prod:up` | Start/update. Migrate before apps. **Does not seed.** Preserves volumes. |
+| `prod:init` | First-time (or re-init). Stops containers if running, **keeps volumes**, constrained sequential build, migrate, **seed**, start. |
+| `prod:up` | Maintenance-window update. Stops containers, **keeps volumes**, constrained sequential build, migrate, start. **Does not seed.** |
 | `prod:down` | Stop containers/networks. **Keeps** Postgres and RabbitMQ volumes. |
 | `prod:reset` | Destroy `prc_prod_postgres_data` and `prc_prod_rabbitmq_data`, then the same as init. |
 
@@ -93,6 +93,8 @@ RabbitMQ transient failures retry with a 2s delay, max 10 deliveries, then dead-
 Manual check after `pnpm prod:up`: Angular at `/`, `/api/v1/fleet`, `/health/live`, WebSocket `/realtime` (`wss:` when the page is HTTPS), ten robots, 2s telemetry, `prod:down` then `prod:up` restores state. No Angular dev proxy. After adding seed robots, use `pnpm seed` or `pnpm dev:reset` locally; `prod:up` does not re-seed.
 
 `prod:*` volumes are **not** `prc_postgres_data` (that one belongs to `pnpm docker:up`).
+
+On small hosts (2 vCPU / 4 GB), `prod:up` uses a short **maintenance window**: it stops current containers (`docker compose down`, no `-v`), builds images with `COMPOSE_PARALLEL_LIMIT=1`, migrates, then starts the stack. This favors deploy stability over zero downtime. If build or migrate fails after the stop, the script exits non-zero and the previous stack stays down; volumes remain; rerun `./scripts/prod-up.sh` after fixing. `prod:init` also stops first without deleting volumes so a re-init does not build on a live stack.
 
 ## Fresh production host
 
@@ -149,8 +151,8 @@ This repo does not enable UFW or change provider firewalls/NSGs. Externally acce
 |---------|---------|
 | `./scripts/bootstrap-host.sh` | Prepare a new Linux machine: Git, Docker Engine, Docker Compose. Idempotent. Does not start the application. |
 | `./scripts/check-host.sh` | Read-only host diagnostics (no installs). |
-| `./scripts/prod-init.sh` / `pnpm prod:init` | First-time application init: migrate, seed, start the stack. Never deletes volumes. |
-| `./scripts/prod-up.sh` / `pnpm prod:up` | Start/update. Does not seed. Preserves volumes. |
+| `./scripts/prod-init.sh` / `pnpm prod:init` | First-time application init: stop if running (keep volumes), sequential build, migrate, seed, start. |
+| `./scripts/prod-up.sh` / `pnpm prod:up` | Maintenance-window update: stop (keep volumes), sequential build, migrate, start. Does not seed. |
 | `./scripts/prod-down.sh` / `pnpm prod:down` | Stop containers. Keeps volumes. |
 | `./scripts/prod-reset.sh` / `pnpm prod:reset` | Destroy application volumes, then the same as init. |
 

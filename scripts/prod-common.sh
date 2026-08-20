@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 COMPOSE=(docker compose -p prc-prod -f infrastructure/docker/docker-compose.prod.yml --env-file .env.prod)
+export COMPOSE_PARALLEL_LIMIT=1
 
 ensure_env_prod() {
   if [[ ! -f .env.prod ]]; then
@@ -39,6 +40,13 @@ ensure_tls_files() {
   echo "" >&2
   echo "before running prod:init / prod:up / prod:reset." >&2
   exit 1
+}
+
+warn_stack_stopped_on_error() {
+  local rerun="$1"
+  echo "error: deploy failed; the production stack is currently stopped." >&2
+  echo "Postgres and RabbitMQ volumes were preserved." >&2
+  echo "Inspect, fix, and rerun ${rerun}" >&2
 }
 
 wait_healthy() {
