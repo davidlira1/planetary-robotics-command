@@ -13,6 +13,34 @@ ensure_env_prod() {
   fi
 }
 
+ensure_tls_files() {
+  local cert="${ROOT}/secrets/tls/origin.crt"
+  local key="${ROOT}/secrets/tls/origin.key"
+  local kind=""
+  local path=""
+
+  if [[ ! -f "${cert}" ]]; then
+    kind="certificate"
+    path="${cert}"
+  elif [[ ! -f "${key}" ]]; then
+    kind="key"
+    path="${key}"
+  else
+    return 0
+  fi
+
+  echo "error: missing TLS ${kind}:" >&2
+  echo "  ${path}" >&2
+  echo "" >&2
+  echo "Place the Cloudflare Origin CA certificate/key under:" >&2
+  echo "" >&2
+  echo "  secrets/tls/origin.crt" >&2
+  echo "  secrets/tls/origin.key" >&2
+  echo "" >&2
+  echo "before running prod:init / prod:up / prod:reset." >&2
+  exit 1
+}
+
 wait_healthy() {
   local name="$1"
   local deadline=$((SECONDS + 90))

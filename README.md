@@ -64,7 +64,7 @@ Or one-shot setup helper: `pnpm setup` then the `dev:*` commands.
 
 ## Local production stack
 
-One Compose topology (Nginx + Postgres + RabbitMQ + API + workers + simulator). Cursor acceptance is `http://localhost` after `pnpm prod:up`. RabbitMQ and Postgres are not published on the host. Production images use Node 24.15. This is also the file a later Azure VM would run; this repo does not provision Azure.
+One Compose topology (Nginx + Postgres + RabbitMQ + API + workers + simulator). Cursor acceptance is `https://localhost` after `pnpm prod:up` (HTTP on port 80 redirects to HTTPS). RabbitMQ and Postgres are not published on the host. Production images use Node 24.15. This is also the file a later Azure VM would run; this repo does not provision Azure. HTTPS uses a host-supplied Cloudflare Origin CA cert/key under `secrets/tls/` (not in Git).
 
 `.env.prod` stores primitive credentials once (`POSTGRES_*`, `RABBITMQ_USER` / `RABBITMQ_PASSWORD`). Compose derives `DATABASE_URL` and `RABBITMQ_URL` for the containers. Do not duplicate passwords into connection strings. Generate production passwords as hex so they are safe in URI userinfo (no `@ : / # ?`):
 
@@ -90,7 +90,7 @@ pnpm prod:reset                  # DESTROYS prc_prod_* volumes, then re-inits
 
 RabbitMQ transient failures retry with a 2s delay, max 10 deliveries, then dead-letter (`RABBITMQ_MAX_DELIVERY_COUNT`, `RABBITMQ_RETRY_TTL_MS`). Permanent validation failures dead-letter immediately.
 
-Manual check after `prod:up`: Angular at `/`, `/api/v1/fleet`, `/health/live`, WebSocket `/realtime`, ten robots, 2s telemetry, `prod:down` then `prod:up` restores state. No Angular dev proxy. After adding seed robots, use `pnpm seed` or `pnpm dev:reset` locally; `prod:up` does not re-seed.
+Manual check after `pnpm prod:up`: Angular at `/`, `/api/v1/fleet`, `/health/live`, WebSocket `/realtime` (`wss:` when the page is HTTPS), ten robots, 2s telemetry, `prod:down` then `prod:up` restores state. No Angular dev proxy. After adding seed robots, use `pnpm seed` or `pnpm dev:reset` locally; `prod:up` does not re-seed.
 
 `prod:*` volumes are **not** `prc_postgres_data` (that one belongs to `pnpm docker:up`).
 
@@ -124,18 +124,26 @@ openssl rand -hex 24             # paste into POSTGRES_PASSWORD
 openssl rand -hex 24             # paste into RABBITMQ_PASSWORD
 # Compose derives DATABASE_URL and RABBITMQ_URL. Do not add those keys.
 
+mkdir -p secrets/tls
+chmod 700 secrets/tls
+# Operator securely copies the Cloudflare Origin CA certificate and private key:
+#   secrets/tls/origin.crt
+#   secrets/tls/origin.key
+chmod 644 secrets/tls/origin.crt
+chmod 600 secrets/tls/origin.key
+
 ./scripts/prod-init.sh
 ```
 
-Public acceptance: `http://<VM_PUBLIC_IP>` (no TLS in this slice). `prod-init.sh` still prints `http://localhost`, which is the loopback on the VM.
+Public acceptance: `https://robotfleet.davlira.dev`. HTTP on port 80 redirects to HTTPS; 443 serves the app. Cloudflare SSL/TLS mode must be **Full (strict)** so Cloudflare validates the Origin CA certificate. `bootstrap-host.sh` does not generate or copy TLS files.
 
 This repo does not enable UFW or change provider firewalls/NSGs. Externally accessible ports that must be allowed outside this repository:
 
 | Port | Use |
 |------|-----|
 | 22 | SSH |
-| 80 | HTTP |
-| 443 | HTTPS later |
+| 80 | HTTP (redirects to HTTPS) |
+| 443 | HTTPS |
 
 | Command | Meaning |
 |---------|---------|

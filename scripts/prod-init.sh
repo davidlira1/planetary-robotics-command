@@ -3,6 +3,7 @@ set -euo pipefail
 # shellcheck source=prod-common.sh
 source "$(cd "$(dirname "$0")" && pwd)/prod-common.sh"
 ensure_env_prod
+ensure_tls_files
 
 # seed is on the init profile; a default compose build never rebuilds prc-prod-seed
 "${COMPOSE[@]}" --profile init build
