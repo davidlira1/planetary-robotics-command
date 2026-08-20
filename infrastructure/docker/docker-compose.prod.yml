@@ -4,6 +4,9 @@ x-worker-build: &worker-build
   context: ../..
   dockerfile: infrastructure/docker/Dockerfile.worker
 
+x-database-url: &database-url "postgresql://${POSTGRES_USER:-prc}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-prc}?schema=public"
+x-rabbitmq-url: &rabbitmq-url "amqp://${RABBITMQ_USER:-prc}:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672"
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -11,7 +14,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-prc}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-prc}
     volumes:
       - prc_prod_postgres_data:/var/lib/postgresql/data
@@ -29,7 +32,7 @@ services:
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-prc}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-prc}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
     volumes:
       - prc_prod_rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -47,7 +50,7 @@ services:
     container_name: prc-prod-migrate
     restart: "no"
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: *database-url
     command: ["pnpm", "--filter", "@prc/persistence-prisma", "migrate:deploy"]
     depends_on:
       postgres:
@@ -63,7 +66,7 @@ services:
     container_name: prc-prod-seed
     restart: "no"
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: *database-url
     command: ["pnpm", "--filter", "@prc/persistence-prisma", "seed"]
     depends_on:
       postgres:
@@ -80,7 +83,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: *database-url
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,9 +113,9 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: *database-url
       MESSAGE_BROKER_PROVIDER: rabbitmq
-      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_EXCHANGE: robot.telemetry.received
       RABBITMQ_RETRY_TTL_MS: ${RABBITMQ_RETRY_TTL_MS:-2000}
       OUTBOX_POLL_INTERVAL_MS: ${OUTBOX_POLL_INTERVAL_MS:-500}
@@ -138,9 +141,9 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: *database-url
       MESSAGE_BROKER_PROVIDER: rabbitmq
-      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_MAX_DELIVERY_COUNT: ${RABBITMQ_MAX_DELIVERY_COUNT:-10}
       RABBITMQ_RETRY_TTL_MS: ${RABBITMQ_RETRY_TTL_MS:-2000}
     depends_on:
@@ -164,7 +167,7 @@ services:
     environment:
       NODE_ENV: production
       MESSAGE_BROKER_PROVIDER: rabbitmq
-      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_URL: *rabbitmq-url
       RABBITMQ_MAX_DELIVERY_COUNT: ${RABBITMQ_MAX_DELIVERY_COUNT:-10}
       RABBITMQ_RETRY_TTL_MS: ${RABBITMQ_RETRY_TTL_MS:-2000}
       REALTIME_GATEWAY_PORT: 3001
@@ -185,7 +188,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: *database-url
       TELEMETRY_RETENTION_HOURS: ${TELEMETRY_RETENTION_HOURS:-2}
       PUBLISHED_OUTBOX_RETENTION_HOURS: ${PUBLISHED_OUTBOX_RETENTION_HOURS:-2}
       PROCESSED_MESSAGE_RETENTION_HOURS: ${PROCESSED_MESSAGE_RETENTION_HOURS:-24}

@@ -66,8 +66,13 @@ Or one-shot setup helper: `pnpm setup` then the `dev:*` commands.
 
 One Compose topology (Nginx + Postgres + RabbitMQ + API + workers + simulator). Cursor acceptance is `http://localhost` after `pnpm prod:up`. RabbitMQ and Postgres are not published on the host. Production images use Node 24.15. This is also the file a later Azure VM would run; this repo does not provision Azure.
 
+`.env.prod` stores primitive credentials once (`POSTGRES_*`, `RABBITMQ_USER` / `RABBITMQ_PASSWORD`). Compose derives `DATABASE_URL` and `RABBITMQ_URL` for the containers. Do not duplicate passwords into connection strings. Generate production passwords as hex so they are safe in URI userinfo (no `@ : / # ?`):
+
 ```bash
 cp .env.prod.example .env.prod   # first time
+openssl rand -hex 24             # POSTGRES_PASSWORD
+openssl rand -hex 24             # RABBITMQ_PASSWORD
+# edit .env.prod — set those two values; delete leftover DATABASE_URL / RABBITMQ_URL if present
 pnpm prod:init                   # first-time create: migrate + seed + start
 # later:
 pnpm prod:up                     # start/update; migrate; do not seed
@@ -114,7 +119,11 @@ cd planetary-robotics-command
 
 # Reconnect SSH if docker-group membership was added.
 
-cp .env.prod.example .env.prod   # edit secrets; never commit this file
+cp .env.prod.example .env.prod   # never commit this file
+openssl rand -hex 24             # paste into POSTGRES_PASSWORD
+openssl rand -hex 24             # paste into RABBITMQ_PASSWORD
+# Compose derives DATABASE_URL and RABBITMQ_URL. Do not add those keys.
+
 ./scripts/prod-init.sh
 ```
 
