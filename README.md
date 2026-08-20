@@ -89,6 +89,58 @@ Manual check after `prod:up`: Angular at `/`, `/api/v1/fleet`, `/health/live`, W
 
 `prod:*` volumes are **not** `prc_postgres_data` (that one belongs to `pnpm docker:up`).
 
+## Fresh production host
+
+Prepare a disposable Ubuntu 22.04+ VM for the existing Compose stack. The VM stays disposable; this repository is the source of truth after clone. Do not install Node, PostgreSQL, RabbitMQ, or Nginx on the host.
+
+Git has two roles:
+
+1. **Pre-bootstrap:** install Git manually only if it is missing, so the private repo can be cloned.
+2. **Bootstrap invariant:** `bootstrap-host.sh` still installs Git so a fully bootstrapped host always has Git, Docker Engine, and Docker Compose.
+
+```bash
+# 1. SSH into the new Ubuntu host
+# 2. Install Git only if it is not already present:
+sudo apt-get update
+sudo apt-get install -y git
+
+# 3. Create a VM-specific GitHub SSH/deploy key. Add the PUBLIC key to GitHub.
+#    Do not copy a developer's personal private key onto the VM.
+
+git clone git@github.com:davidlira1/planetary-robotics-command.git
+cd planetary-robotics-command
+
+./scripts/bootstrap-host.sh
+
+# Reconnect SSH if docker-group membership was added.
+
+cp .env.prod.example .env.prod   # edit secrets; never commit this file
+./scripts/prod-init.sh
+```
+
+Public acceptance: `http://<VM_PUBLIC_IP>` (no TLS in this slice). `prod-init.sh` still prints `http://localhost`, which is the loopback on the VM.
+
+This repo does not enable UFW or change provider firewalls/NSGs. Externally accessible ports that must be allowed outside this repository:
+
+| Port | Use |
+|------|-----|
+| 22 | SSH |
+| 80 | HTTP |
+| 443 | HTTPS later |
+
+| Command | Meaning |
+|---------|---------|
+| `./scripts/bootstrap-host.sh` | Prepare a new Linux machine: Git, Docker Engine, Docker Compose. Idempotent. Does not start the application. |
+| `./scripts/check-host.sh` | Read-only host diagnostics (no installs). |
+| `./scripts/prod-init.sh` / `pnpm prod:init` | First-time application init: migrate, seed, start the stack. Never deletes volumes. |
+| `./scripts/prod-up.sh` / `pnpm prod:up` | Start/update. Does not seed. Preserves volumes. |
+| `./scripts/prod-down.sh` / `pnpm prod:down` | Stop containers. Keeps volumes. |
+| `./scripts/prod-reset.sh` / `pnpm prod:reset` | Destroy application volumes, then the same as init. |
+
+On the VM, call the scripts directly (Node/pnpm are not installed on the host). Laptop `pnpm prod:*` wrappers remain for local Docker Desktop.
+
+Re-run `bootstrap-host.sh` to refresh host tools. Use `prod:reset` only to destroy and recreate application data.
+
 ### Simulator demo notes
 
 - Default fleet: `D-04`, `D-09`, `H-17`, `H-22`, `W-08`, `W-14`, `M-12`, `M-27`, `S-03`, `S-11` (matches seed IDs; simulator does not import Prisma seed code).
